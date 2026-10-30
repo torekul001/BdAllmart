@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block body %}
+<header class="store-top">
+    <div class="store-bar">
+        <a href="{{ url_for('login') }}">Home</a>
+        {% if session.get("user_id") %}
+            <a href="{{ user_dashboard_url }}">Dashboard</a>
+            <a href="{{ url_for('logout') }}">Logout</a>
+        {% else %}
+            <a href="{{ url_for('register') }}">Register</a>
+            <a href="{{ url_for('login') }}#login-panel">Login</a>
+        {% endif %}
+    </div>
+    <div class="store-header">
+        <a class="market-logo" href="{{ url_for('login') }}"><img src="{{ url_for('static', filename='bdallmartLogo.png', v='20260518-logo') }}" alt="bdallmart.com"><strong>bdallmart.com</strong></a>
+        <form class="search-box" method="get" action="{{ url_for('ask_chat') }}">
+            <input type="search" name="q" placeholder="Ask more products">
+            <button type="submit">Ask</button>
+        </form>
+        <div class="quick-actions">
+            <a href="{{ request.path }}?cart=open">Cart ({{ cart_count }})</a>
+            <span>Orders</span>
+            <span>Messages</span>
+        </div>
+    </div>
+</header>
+
+<main class="cart-page">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+            <div class="message {{ category }}">{{ message }}</div>
+        {% endfor %}
+    {% endwith %}
+
+    <section class="cart-layout">
+        <div class="cart-items">
+            <h1>Shopping Cart</h1>
+            {% for item in items %}
+                <article class="cart-item">
+                    <a href="{{ url_for('product_details', product_id=item.id) }}">
+                        <img src="{{ item.image|legacy_asset }}" alt="{{ item.name }}">
+                    </a>
+                    <div>
+                        <h2><a href="{{ url_for('product_details', product_id=item.id) }}">{{ item.name }}</a></h2>
+                        <span>{{ item.seller }}</span>
+                        <strong>Tk {{ item.price }}</strong>
+                    </div>
+                    <form class="cart-quantity-form" method="post" action="{{ url_for('update_cart', product_id=item.id) }}">
+                        <input class="input" type="number" min="0" name="quantity" value="{{ item.quantity }}" aria-label="Quantity for {{ item.name }}" onchange="this.form.submit()">
+                    </form>
+                    <form class="cart-remove-form" method="post" action="{{ url_for('remove_from_cart', product_id=item.id) }}">
+                        <input type="hidden" name="next" value="{{ request.full_path }}">
+                        <button class="remove-btn" type="submit" aria-label="Delete {{ item.name }}" title="Delete item">
+                            <svg class="remove-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                                <path d="M3 6h18"></path>
+                                <path d="M8 6V4h8v2"></path>
+                                <path d="M6 6l1 15h10l1-15"></path>
+                                <path d="M10 11v6"></path>
+                                <path d="M14 11v6"></path>
+                            </svg>
+                        </button>
+                    </form>
+                </article>
+            {% else %}
+                <div class="empty-state">
+                    <strong>Your cart is empty</strong>
+                    <span>Browse products and add items to your cart.</span>
+                </div>
+            {% endfor %}
+        </div>
+        <aside class="cart-summary">
+            <h2>Order Summary</h2>
+            <div><span>Items</span><strong>{{ cart_count }}</strong></div>
+            <div><span>Total</span><strong>Tk {{ "%.2f"|format(total) }}</strong></div>
+            <a class="btn summary-checkout-link" href="{{ url_for('checkout') }}">Proceed to Checkout</a>
+        </aside>
+    </section>
+</main>
+{% endblock %}

@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% block body %}
+<main class="dashboard">
+    <aside class="sidebar">
+        <a class="brand" href="{{ url_for('dashboard') }}"><img src="{{ url_for('static', filename='bdallmartLogo.png', v='20260518-logo') }}" alt="bdallmart.com"> bdallmart.com</a>
+        <div class="sidebar-user">
+            <strong>{{ session.get("username") }}</strong>
+            <span>{{ role }}</span>
+        </div>
+        <nav>
+            {% for label, href in menu %}
+                <a class="{% if request.path == href %}active{% endif %}" href="{{ href }}">{{ label }}</a>
+            {% endfor %}
+            {% include '_workspace_menu.html' %}
+        </nav>
+        <a class="sidebar-logout" href="{{ url_for('logout') }}">Logout</a>
+    </aside>
+
+    <section class="content">
+        <header class="dashboard-topbar">
+            <div>
+                <span>{{ accent }}</span>
+                <h1>{{ title }}</h1>
+                <p>Assigned ecommerce orders, delivery status, and delivery history ekhan theke manage hobe.</p>
+            </div>
+            <div class="dashboard-top-actions">
+                <a class="workspace-entry" href="{{ url_for('market.home') }}">New Features ↗</a>
+                <a href="{{ url_for('login') }}">Marketplace</a>
+            </div>
+        </header>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-stack">
+                    {% for category, message in messages %}
+                        <div class="message {{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% set delivery_status = (profile.AdminStatus or profile.Status or profile.Active or "Active")|string|trim|lower %}
+        {% set delivery_status_text = "Active" if delivery_status == "true" or delivery_status == "active" else ("Inactive" if delivery_status == "false" or delivery_status == "inactive" else (profile.AdminStatus or profile.Status or "Active")) %}
+        <section class="offer-hero-panel">
+            <div class="offer-seller-strip">
+                <div class="offer-designer-photo">
+                    {% set delivery_picture = profile|user_picture %}
+                    {% if delivery_picture %}
+                        <img src="{{ delivery_picture }}" alt="{{ session.get('username') }}">
+                    {% else %}
+                        <span>{{ (session.get("username") or "AS")[:2]|upper }}</span>
+                    {% endif %}
+                </div>
+                <article class="seller-kpi red"><span>{{ stats[0][1] }}</span><strong>{{ stats[0][0] }}</strong></article>
+                <article class="seller-kpi blue"><span>{{ stats[1][1] }}</span><strong>{{ stats[1][0] }}</strong></article>
+                <article class="seller-kpi slate"><span>{{ stats[2][1] }}</span><strong>{{ stats[2][0] }}</strong></article>
+                <article class="seller-kpi teal"><span>{{ stats[3][1] }}</span><strong>{{ stats[3][0] }}</strong></article>
+                <article class="seller-kpi gold"><span>Status</span><strong>{{ delivery_status_text }}</strong></article>
+            </div>
+        </section>
+
+        <section class="offer-summary-line customer-summary-line">
+            <article>
+                <span>Account</span>
+                <strong>{{ session.get("username") }}</strong>
+            </article>
+            <article>
+                <span>Email</span>
+                <strong>{{ session.get("email") or profile.Email or "Not added" }}</strong>
+            </article>
+            <article>
+                <span>Phone</span>
+                <strong>{{ session.get("phone") or profile.Phone or "Not added" }}</strong>
+            </article>
+            <article>
+                <span>Status</span>
+                <strong>{{ delivery_status_text }}</strong>
+            </article>
+        </section>
+
+        <section class="panel-card">
+            <div class="panel-heading">
+                <div>
+                    <h2>Assigned Orders</h2>
+                    <p>{{ orders|length }} order found for delivery.</p>
+                </div>
+            </div>
+            <form class="admin-filter-bar" method="get">
+                <label>
+                    From
+                    <input type="date" name="date_from" value="{{ date_from }}">
+                </label>
+                <label>
+                    To
+                    <input type="date" name="date_to" value="{{ date_to }}">
+                </label>
+                <label>
+                    Status
+                    <select name="status">
+                        <option value="">All status</option>
+                        {% for item in statuses %}
+                            <option value="{{ item }}" {% if selected_status == item %}selected{% endif %}>{{ item }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <button type="submit">Filter</button>
+                <a href="{{ url_for('delivery_dashboard') }}">Clear</a>
+            </form>
+            <div class="admin-table-wrap">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Order</th>
+                            <th>Customer</th>
+                            <th>Product</th>
+                            <th>Qty</th>
+                            <th>Price</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                            <th>Update</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in orders %}
+                            <tr>
+                                <td>{{ item.OrderId }}</td>
+                                <td>{{ item.Customerid or item.UserName }}</td>
+                                <td>{{ item.Pname }}</td>
+                                <td>{{ item.Quantity }}</td>
+                                <td>Tk {{ item.Price or 0 }}</td>
+                                <td>{{ item.Status or "Pending" }}</td>
+                                <td>{{ item.Date }}</td>
+                                <td>
+                                    <form class="admin-assign-form" method="post">
+                                        <input type="hidden" name="assign_id" value="{{ item.AssignId }}">
+                                        <input type="hidden" name="date_from" value="{{ date_from }}">
+                                        <input type="hidden" name="date_to" value="{{ date_to }}">
+                                        <input type="hidden" name="current_status" value="{{ selected_status }}">
+                                        <select name="status" required>
+                                            {% for status in statuses %}
+                                                <option value="{{ status }}" {% if item.Status == status %}selected{% endif %}>{{ status }}</option>
+                                            {% endfor %}
+                                        </select>
+                                        <button type="submit">Update</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% else %}
+                            <tr>
+                                <td colspan="8">No assigned delivery order found.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </section>
+</main>
+{% endblock %}

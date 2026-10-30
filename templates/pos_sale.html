@@ -1,0 +1,308 @@
+{% extends "base.html" %}
+{% block body %}
+<main class="pos-page">
+    <header class="pos-topbar">
+        <a class="market-logo" href="{{ url_for('pos_dashboard') }}"><img src="{{ url_for('static', filename='bdallmartLogo.png', v='20260518-logo') }}" alt="bdallmart.com"><strong>bdallmart.com</strong></a>
+        <nav>
+            <a href="{{ url_for('login') }}">Home</a>
+            <a href="{{ url_for('pos_dashboard') }}">Dashboard</a>
+            <a class="active" href="{{ url_for('pos_sale') }}">POS Sale</a>
+            <a href="{{ url_for('pos_sales_reports') }}">POS Reports</a>
+            <a href="{{ url_for('logout') }}">Logout</a>
+        </nav>
+        <div class="pos-cart-mini">
+            <strong>Shopping cart</strong>
+            <span><b id="pos-mini-count">0</b> Items</span>
+            <span>Total: <b id="pos-mini-total">0.00</b></span>
+        </div>
+    </header>
+
+    <section class="pos-shell">
+        <section class="pos-ticket">
+            <div class="pos-panel-title">
+                <div>
+                    <span>Current Sale</span>
+                    <strong>POS Ticket</strong>
+                </div>
+                <b id="pos-ticket-status">Ready</b>
+            </div>
+            <div class="pos-ticket-tools">
+                <select id="pos-sales-person">
+                    <option>{{ selected_employee }}</option>
+                    <option>Sales Employee</option>
+                </select>
+                <select>
+                    <option>Walk-in Consumer</option>
+                    <option>Regular Consumer</option>
+                </select>
+                <button type="button" id="pos-clear-ticket" title="Cancel sale">Cancel</button>
+            </div>
+            <div class="pos-customer-form">
+                <label class="wide">
+                    <span>Delivery Address</span>
+                    <textarea id="pos-customer-address" rows="2" placeholder="Delivery address" required></textarea>
+                </label>
+                <label>
+                    <span>Mobile Number</span>
+                    <input id="pos-customer-mobile" type="tel" placeholder="01XXXXXXXXX" required>
+                </label>
+                <label>
+                    <span>Full Name</span>
+                    <input id="pos-customer-name" type="text" placeholder="Customer full name" required>
+                </label>
+            </div>
+            <div class="pos-table-wrap">
+                <table class="pos-table">
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th>Price</th>
+                            <th>Qty/Amt</th>
+                            <th>Discount</th>
+                            <th>Total</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="pos-ticket-body">
+                        <tr class="pos-empty-row">
+                            <td colspan="6">Product add korle ekhane sale item show korbe.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <footer class="pos-summary">
+                <div><span>Total Item:</span><strong id="pos-item-count">0</strong></div>
+                <div><span>Sub total:</span><strong id="pos-subtotal">0.00</strong></div>
+                <div><span>Delivery Charge:</span><input id="pos-delivery" type="number" min="0" step="1" value="0"></div>
+                <div class="pos-grand-total"><span>Total:</span><strong id="pos-total">0.00</strong></div>
+                <div><span>Date:</span><strong>{{ current_date or "" }}</strong></div>
+                <div class="pos-actions">
+                    <button type="button" id="pos-cancel">Cancel</button>
+                    <button type="button" id="pos-complete">Sale Product</button>
+                </div>
+            </footer>
+        </section>
+
+        <section class="pos-product-panel">
+            <div class="pos-panel-title">
+                <div>
+                    <span>Product Browser</span>
+                    <strong id="pos-active-category">All Products</strong>
+                </div>
+                <b><span id="pos-result-count">0</span> found</b>
+            </div>
+            <div class="pos-search-row">
+                <input id="pos-search" type="search" placeholder="Name Or Code Or Category" autocomplete="off">
+                <input id="pos-barcode" type="search" placeholder="Barcode" autocomplete="off">
+                <button type="button" id="pos-add-barcode" title="Add barcode item">+</button>
+            </div>
+            <div class="pos-category-buttons">
+                <button type="button" class="active" data-category="All">All</button>
+                {% for category in pos_categories %}
+                    <button type="button" data-category="{{ category }}">{{ category }}</button>
+                {% endfor %}
+            </div>
+            <div class="pos-products" id="pos-products"></div>
+        </section>
+    </section>
+</main>
+
+<script>
+    window.POS_PRODUCTS = {{ products|tojson }};
+    (function () {
+        const products = window.POS_PRODUCTS || [];
+        const state = {category: "All", query: "", cart: []};
+        const productWrap = document.getElementById("pos-products");
+        const ticketBody = document.getElementById("pos-ticket-body");
+        const search = document.getElementById("pos-search");
+        const barcode = document.getElementById("pos-barcode");
+        const delivery = document.getElementById("pos-delivery");
+        const resultCount = document.getElementById("pos-result-count");
+        const activeCategory = document.getElementById("pos-active-category");
+        const ticketStatus = document.getElementById("pos-ticket-status");
+        const customerMobile = document.getElementById("pos-customer-mobile");
+        const customerName = document.getElementById("pos-customer-name");
+        const customerAddress = document.getElementById("pos-customer-address");
+
+        function money(value) {
+            return (Number(value) || 0).toFixed(2);
+        }
+
+        function filteredProducts() {
+            const query = state.query.toLowerCase();
+            return products.filter(function (product) {
+                const inCategory = state.category === "All" || product.category === state.category;
+                const haystack = [product.name, product.id, product.barcode, product.category].join(" ").toLowerCase();
+                return inCategory && (!query || haystack.indexOf(query) >= 0);
+            });
+        }
+
+        function setCategory(category) {
+            state.category = category || "All";
+            document.querySelectorAll("[data-category]").forEach(function (button) {
+                button.classList.toggle("active", button.dataset.category === state.category);
+            });
+            activeCategory.textContent = state.category === "All" ? "All Products" : state.category;
+            renderProducts();
+        }
+
+        function addProduct(product) {
+            const existing = state.cart.find(function (item) { return item.id === product.id; });
+            if (existing) {
+                existing.qty += 1;
+            } else {
+                state.cart.push({id: product.id, barcode: product.barcode, name: product.name, image: product.image, price: Number(product.price) || 0, qty: 1, discount: 0});
+            }
+            ticketStatus.textContent = "Added";
+            window.setTimeout(function () { ticketStatus.textContent = "Ready"; }, 900);
+            renderCart();
+        }
+
+        function removeProduct(productId) {
+            state.cart = state.cart.filter(function (item) { return item.id !== productId; });
+            renderCart();
+        }
+
+        function renderProducts() {
+            productWrap.innerHTML = "";
+            const visibleProducts = filteredProducts();
+            resultCount.textContent = visibleProducts.length;
+            visibleProducts.forEach(function (product) {
+                const card = document.createElement("article");
+                card.className = "pos-product-card";
+                card.innerHTML = [
+                    '<img src="' + product.image + '" alt="">',
+                    '<span>Price: ' + money(product.price) + '</span>',
+                    '<strong>' + product.name + '</strong>',
+                    '<button type="button">Add To Cart</button>'
+                ].join("");
+                card.querySelector("button").addEventListener("click", function () {
+                    addProduct(product);
+                    card.classList.add("just-added");
+                    window.setTimeout(function () { card.classList.remove("just-added"); }, 450);
+                });
+                productWrap.appendChild(card);
+            });
+            if (!productWrap.children.length) {
+                productWrap.innerHTML = '<div class="pos-no-products">No product found.</div>';
+            }
+        }
+
+        function renderCart() {
+            ticketBody.innerHTML = "";
+            let subtotal = 0;
+            state.cart.forEach(function (item) {
+                const lineTotal = (item.price * item.qty) - item.discount;
+                subtotal += lineTotal;
+                const row = document.createElement("tr");
+                row.innerHTML = [
+                    '<td><div class="pos-ticket-item"><img src="' + item.image + '" alt=""><span>' + item.name + '</span></div></td>',
+                    '<td>' + money(item.price) + '</td>',
+                    '<td><input type="number" min="1" value="' + item.qty + '"></td>',
+                    '<td><input type="number" min="0" value="' + item.discount + '"></td>',
+                    '<td>' + money(lineTotal) + '</td>',
+                    '<td><button type="button" aria-label="Remove item">x</button></td>'
+                ].join("");
+                const inputs = row.querySelectorAll("input");
+                inputs[0].addEventListener("input", function () {
+                    item.qty = Math.max(1, Number(this.value) || 1);
+                    renderCart();
+                });
+                inputs[1].addEventListener("input", function () {
+                    item.discount = Math.max(0, Number(this.value) || 0);
+                    renderCart();
+                });
+                row.querySelector("button").addEventListener("click", function () {
+                    removeProduct(item.id);
+                });
+                ticketBody.appendChild(row);
+            });
+            if (!state.cart.length) {
+                ticketBody.innerHTML = '<tr class="pos-empty-row"><td colspan="6">Product add korle ekhane sale item show korbe.</td></tr>';
+            }
+            const deliveryCharge = Number(delivery.value) || 0;
+            const totalQty = state.cart.reduce(function (sum, item) { return sum + item.qty; }, 0);
+            document.getElementById("pos-item-count").textContent = totalQty;
+            document.getElementById("pos-mini-count").textContent = totalQty;
+            document.getElementById("pos-subtotal").textContent = money(subtotal);
+            document.getElementById("pos-total").textContent = money(subtotal + deliveryCharge);
+            document.getElementById("pos-mini-total").textContent = money(subtotal + deliveryCharge);
+        }
+
+        document.querySelectorAll("[data-category]").forEach(function (button) {
+            button.addEventListener("click", function () { setCategory(button.dataset.category); });
+        });
+        search.addEventListener("input", function () {
+            state.query = search.value.trim();
+            renderProducts();
+        });
+        document.getElementById("pos-add-barcode").addEventListener("click", function () {
+            const code = barcode.value.trim().toLowerCase();
+            const product = products.find(function (item) {
+                return String(item.barcode).toLowerCase() === code || String(item.id).toLowerCase() === code;
+            });
+            if (product) addProduct(product);
+            barcode.value = "";
+        });
+        barcode.addEventListener("keydown", function (event) {
+            if (event.key === "Enter") document.getElementById("pos-add-barcode").click();
+        });
+        delivery.addEventListener("input", renderCart);
+        document.getElementById("pos-clear-ticket").addEventListener("click", function () {
+            state.cart = [];
+            renderCart();
+        });
+        document.getElementById("pos-cancel").addEventListener("click", function () {
+            state.cart = [];
+            renderCart();
+        });
+        document.getElementById("pos-complete").addEventListener("click", async function () {
+            if (!state.cart.length) return;
+            const customer = {
+                mobile: customerMobile.value.trim(),
+                full_name: customerName.value.trim(),
+                address: customerAddress.value.trim()
+            };
+            if (!customer.mobile || !customer.full_name || !customer.address) {
+                alert("Mobile Number, Full Name, and Delivery Address are required.");
+                if (!customer.mobile) customerMobile.focus();
+                else if (!customer.full_name) customerName.focus();
+                else customerAddress.focus();
+                return;
+            }
+            const button = this;
+            button.disabled = true;
+            button.textContent = "Saving...";
+            try {
+                const response = await fetch("{{ url_for('pos_sale_api') }}", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({
+                        sales_employee: document.getElementById("pos-sales-person").value,
+                        customer: customer,
+                        items: state.cart
+                    })
+                });
+                const data = await response.json();
+                if (!data.ok) throw new Error(data.message || "POS sale save failed.");
+                if (data.report_url) {
+                    const printWindow = window.open(data.report_url, "_blank");
+                    if (!printWindow) window.location.href = data.report_url;
+                }
+                state.cart = [];
+                customerMobile.value = "";
+                customerName.value = "";
+                customerAddress.value = "";
+                renderCart();
+            } catch (error) {
+                alert(error.message || "POS sale save failed.");
+            } finally {
+                button.disabled = false;
+                button.textContent = "Sale Product";
+            }
+        });
+        renderProducts();
+        renderCart();
+    })();
+</script>
+{% endblock %}

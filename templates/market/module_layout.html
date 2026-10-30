@@ -1,0 +1,7 @@
+{% extends 'market/layout.html' %}
+{% block module_styles %}
+<link rel="stylesheet" href="{{ url_for('static',filename='styles.css',v='20261015-compact-course-video') }}">
+{% endblock %}
+{% block content %}
+<div class="workspace-module">{% block body %}{% endblock %}</div>
+{% endblock %}

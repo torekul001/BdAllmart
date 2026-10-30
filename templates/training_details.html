@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block body %}
+<header class="learning-header">
+    <a class="learning-brand" href="{{ url_for('login') }}"><img src="{{ url_for('static', filename='bdallmartLogo.png') }}" alt=""><strong>bdallmart<span>Learning</span></strong></a>
+    <nav aria-label="Learning navigation"><a href="{{ url_for('login') }}#training-courses">Explore courses</a><a class="learning-nav-button" href="{{ url_for('my_courses') }}">My Courses ↗</a></nav>
+</header>
+<main class="training-details learning-page">
+    <nav class="learning-breadcrumb" aria-label="Breadcrumb"><a href="{{ url_for('login') }}">Home</a><span>/</span><a href="{{ url_for('login') }}#training-courses">Training</a><span>/</span><span>{{ course.CourseCategory or course.Course }}</span></nav>
+    <section class="learning-hero">
+        <div class="learning-hero-copy">
+            <span class="learning-kicker">● &nbsp; BUILD YOUR NEXT SKILL</span>
+            <span class="learning-category">{{ course.CourseCategory or course.Course }}</span>
+            <h1>{{ course.Name }}</h1>
+            <p>নতুন দক্ষতা শিখুন, নিজের সম্ভাবনাকে এগিয়ে নিন।</p>
+            <div class="learning-hero-meta"><span>✓ Course overview</span><span>✓ Video-based learning</span></div>
+        </div>
+        <div class="learning-hero-mark" aria-hidden="true">LEARN.<br>CREATE.<br><span>GROW. ↗</span></div>
+    </section>
+    <div class="learning-layout">
+        <article class="learning-content-card" id="course-overview">
+            <section class="learning-video-section" aria-label="Course video">
+                <div class="learning-video-heading"><span>WATCH &amp; LEARN</span><h2>{{ course.Name }}</h2></div>
+                <div class="learning-video-player"><iframe src="https://www.youtube.com/embed/{{ course.VideoLink|urlencode }}" title="{{ course.Name }}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>
+                <p class="learning-video-caption">ভিডিওটি দেখুন, তারপর নিচে কোর্সের বিস্তারিত পড়ুন।</p>
+            </section>
+            <header class="learning-section-heading"><span>01 / COURSE GUIDE</span><h2>About this course</h2><p>কোর্সের বিস্তারিত ও শেখার বিষয়গুলো এক নজরে।</p></header>
+            <div class="course-rich-content learning-article">{{ course.ContentHtml|safe }}</div>
+            {% if not course.ContentHtml %}<p>Contact the institute for course information and enrollment.</p>{% endif %}
+        </article>
+        <aside class="learning-sidebar" aria-label="Course access">
+            <div class="learning-access-card">
+                <div class="learning-cover"><img src="https://i.ytimg.com/vi/{{ course.VideoLink|urlencode }}/hqdefault.jpg" alt="{{ course.Name }} course cover"><span>COURSE MATERIAL</span></div>
+                <div class="learning-access-body"><span class="learning-sidebar-label">YOUR NEXT STEP</span><h2>Ready to start learning?</h2><p>আপনার জন্য নির্ধারিত ক্লাসগুলো দেখতে My Courses-এ যান।</p>
+                    <a class="learning-primary" href="{{ url_for('my_courses') }}">Go to My Courses <span aria-hidden="true">↗</span></a>
+                    <div class="learning-access-note">Lesson access is available after assignment.</div>
+                    <dl class="learning-facts"><div><dt>Category</dt><dd>{{ course.CourseCategory or course.Course }}</dd></div><div><dt>Learning format</dt><dd>Video lessons</dd></div><div><dt>Access</dt><dd>Assigned students</dd></div></dl>
+                </div>
+            </div>
+            <a class="learning-back-link" href="{{ url_for('login') }}#training-courses">← Explore all training courses</a>
+        </aside>
+    </div>
+    <footer class="learning-footer"><strong>Keep learning. Keep growing.</strong><span>bdallmart Learning</span></footer>
+</main>
+{% endblock %}

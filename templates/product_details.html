@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block body %}
+<header class="store-top">
+    <div class="store-bar">
+        <a href="{{ url_for('login') }}">Home</a>
+        <a href="{{ request.path }}?cart=open">Cart ({{ cart_count }})</a>
+        <a href="{{ url_for('register') }}">Register</a>
+        <a href="{{ url_for('login') }}#login-panel">Login</a>
+    </div>
+    <div class="store-header">
+        <a class="market-logo" href="{{ url_for('login') }}"><img src="{{ url_for('static', filename='bdallmartLogo.png', v='20260518-logo') }}" alt="bdallmart.com"><strong>bdallmart.com</strong></a>
+        <form class="search-box" method="get" action="{{ url_for('ask_chat') }}">
+            <input type="search" name="q" placeholder="Ask products, services, courses, jobs">
+            <button type="submit">Ask</button>
+        </form>
+        <div class="quick-actions">
+            <a href="{{ request.path }}?cart=open">Cart ({{ cart_count }})</a>
+            <span>Orders</span>
+            <span>Messages</span>
+        </div>
+    </div>
+</header>
+
+<main class="product-detail-page">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+            <div class="message {{ category }}">{{ message }}</div>
+        {% endfor %}
+    {% endwith %}
+
+    <section class="product-detail">
+        <div class="detail-gallery">
+            <img class="detail-main-image" src="{{ product.images[0]|legacy_asset }}" alt="{{ product.name }}">
+            <div class="detail-thumbs">
+                {% for image in product.images[:4] %}
+                    <img src="{{ image|legacy_asset }}" alt="{{ product.name }}">
+                {% endfor %}
+            </div>
+        </div>
+        <div class="detail-info">
+            <div class="breadcrumb">
+                <a href="{{ url_for('category_products', category_id=product.category_id) }}">{{ product.category_name }}</a>
+                {% if product.subcategory_name %}
+                    <span>/</span>
+                    <a href="{{ url_for('category_products', category_id=product.category_id, sub=product.subcategory_id) }}">{{ product.subcategory_name }}</a>
+                {% endif %}
+            </div>
+            <h1>{{ product.name }}</h1>
+            <div class="detail-price">Tk {{ product.price }}</div>
+            <dl class="detail-meta">
+                {% if product.seller %}<div><dt>Seller</dt><dd>{{ product.seller }}</dd></div>{% endif %}
+                {% if product.unit %}<div><dt>Unit</dt><dd>{{ product.unit }}</dd></div>{% endif %}
+                {% if product.made_by %}<div><dt>Made By</dt><dd>{{ product.made_by }}</dd></div>{% endif %}
+            </dl>
+            <form class="detail-cart-form" method="post" action="{{ url_for('add_to_cart', product_id=product.id) }}">
+                <label>Quantity
+                    <input class="input" type="number" min="1" name="quantity" value="1">
+                </label>
+                <input type="hidden" name="next" value="{{ request.path }}">
+                <button class="btn" type="submit">Add to Cart</button>
+            </form>
+            {% if session.get("user_id") and (session.get("category") or "")|trim|lower in ["customer", "consumer", "designer", "freelancer"] %}
+                <form class="detail-cart-form profile-add-form" method="post" action="{{ url_for('add_product_to_profile', product_id=product.id) }}">
+                    <input type="hidden" name="next" value="{{ request.path }}">
+                    <button class="btn secondary" type="submit">Add to My Profile</button>
+                </form>
+            {% endif %}
+        </div>
+    </section>
+
+    <section class="product-description">
+        <h2>Product Details</h2>
+        <div class="decoded-content">{{ (product.details or product.description or "No product description available.")|decode_html|safe }}</div>
+        {% if product.material_care %}
+            <h2>Material & Care</h2>
+            <div class="decoded-content">{{ product.material_care|decode_html|safe }}</div>
+        {% endif %}
+    </section>
+</main>
+{% endblock %}

@@ -1,0 +1,11 @@
+<div class="open-job-list">
+{% for job in open_jobs %}
+<article class="open-job-row">
+    <div class="open-job-summary"><a class="open-job-title" href="{{ url_for(job.Endpoint,job_id=job.Id) }}">{{ job.Title|decode_html|striptags }}</a><small>{{ job.Category }} · {{ 'Contest' if job.Kind=='contest' else 'Job / Bid' }}</small></div>
+    <strong class="open-job-budget">{{ job.Budget|taka if job.Budget is not none else 'Contact Buyer' }}</strong>
+    <a class="open-job-apply" href="{{ url_for(job.Endpoint,job_id=job.Id) }}">{{ 'Apply' if can_apply_jobs else 'Details' }}</a>
+</article>
+{% else %}
+<div class="empty"><h2>No open jobs right now</h2><p>Active customer jobs will appear here. Check back for new opportunities.</p></div>
+{% endfor %}
+</div>

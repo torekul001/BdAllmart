@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+{% block body %}
+<main class="dashboard">
+    <aside class="sidebar">
+        <a class="brand" href="{{ url_for('admin_dashboard') }}"><img src="{{ url_for('static', filename='bdallmartLogo.png', v='20260518-logo') }}" alt="bdallmart.com"> bdallmart.com</a>
+        <div class="sidebar-user">
+            <strong>{{ session.get("username") }}</strong>
+            <span>{{ role }}</span>
+        </div>
+        <nav>
+            {% for group_title, group_items in menu_groups %}
+                <div class="sidebar-menu-group">
+                    <h3>{{ group_title }}</h3>
+                    {% for label, href in group_items %}
+                        <a class="{% if request.path == href %}active{% endif %}" href="{{ href }}">{{ label }}</a>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+            {% include '_workspace_menu.html' %}
+        </nav>
+        <a class="sidebar-logout" href="{{ url_for('logout') }}">Logout</a>
+    </aside>
+
+    <section class="content">
+        <header class="dashboard-topbar">
+            <div>
+                <span>{{ accent }}</span>
+                <h1>{{ title }}</h1>
+                <p>EcommerceUI/AddProduct.aspx theke Python admin CRUD connected.</p>
+            </div>
+            <div class="dashboard-top-actions">
+                <a class="workspace-entry" href="{{ url_for('market.home') }}">New Features ↗</a>
+                <a href="{{ url_for('admin_dashboard') }}">Dashboard</a>
+                <a href="{{ url_for('admin_module_dashboard', module_slug='product-barcode') }}">Approve Products</a>
+            </div>
+        </header>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="message {{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <section class="admin-crud-tabs">
+            {% for label, slug in setup_links %}
+                <a class="{% if slug == 'product' %}active{% endif %}" href="{{ url_for('admin_module_dashboard', module_slug='ecommerce-setup/' ~ slug) }}">{{ label }}</a>
+            {% endfor %}
+        </section>
+
+        <section class="admin-crud-grid product-crud-grid">
+            <form class="admin-crud-card product-crud-form" method="post" enctype="multipart/form-data">
+                <h2>{{ "Edit Product #" ~ selected_product.PID if selected_product else "New Product" }}</h2>
+                <input type="hidden" name="product_id" value="{{ selected_product.PID if selected_product else '' }}">
+
+                <div class="product-form-grid">
+                    <label class="wide">
+                        Product name
+                        <input type="text" name="product_name" maxlength="550" required value="{{ selected_product.PName if selected_product else '' }}">
+                    </label>
+                    <label>
+                        Product code
+                        <input type="text" name="product_code" maxlength="50" value="{{ selected_product.ProductID if selected_product else '' }}">
+                    </label>
+                    <label>
+                        Seller username
+                        <input type="text" name="seller" maxlength="250" value="{{ selected_product.MainItemSellerName if selected_product else session.get('username', 'admin') }}">
+                    </label>
+                    <label>
+                        Category
+                        <select name="category_id">
+                            <option value="0">Select category</option>
+                            {% for category in product_options.categories %}
+                                <option value="{{ category.id }}" {% if selected_product and selected_product.PCategoryID == category.id %}selected{% endif %}>{{ category.CategoryName }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    <label>
+                        Sub-category
+                        <select name="subcategory_id">
+                            <option value="0">Select sub-category</option>
+                            {% for subcategory in product_options.subcategories %}
+                                <option value="{{ subcategory.id }}" {% if selected_product and selected_product.PSubCatID == subcategory.id %}selected{% endif %}>{{ subcategory.SubcatName }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    <label>
+                        Brand
+                        <select name="brand_id">
+                            <option value="0">Select brand</option>
+                            {% for brand in product_options.brands %}
+                                <option value="{{ brand.BrandID }}" {% if selected_product and selected_product.PBrandID == brand.BrandID %}selected{% endif %}>{{ brand.Name }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    <label>
+                        Gender
+                        <select name="gender_id">
+                            <option value="0">Select gender</option>
+                            {% for gender in product_options.genders %}
+                                <option value="{{ gender.GenderID }}" {% if selected_product and selected_product.PGender == gender.GenderID %}selected{% endif %}>{{ gender.GenderName }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    <label>
+                        Price
+                        <input type="number" name="price" step="0.01" min="0" value="{{ selected_product.PPrice if selected_product else '' }}">
+                    </label>
+                    <label>
+                        Sale price
+                        <input type="number" name="sale_price" step="0.01" min="0" value="{{ selected_product.PSelPrice if selected_product else '' }}">
+                    </label>
+                    <label>
+                        Quantity
+                        <input type="number" name="quantity" min="1" value="{{ first_quantity }}">
+                    </label>
+                    <label>
+                        Commission %
+                        <input type="number" name="commission" step="0.01" min="0" value="{{ selected_product.Comission if selected_product else '' }}">
+                    </label>
+                    <label>
+                        Unit
+                        <input type="text" name="unit" maxlength="50" value="{{ selected_product.Unit if selected_product else '' }}">
+                    </label>
+                    <label>
+                        Made by
+                        <input type="text" name="made_by" maxlength="50" value="{{ selected_product.MadeBy if selected_product else '' }}">
+                    </label>
+                    <label>
+                        Status
+                        <select name="status">
+                            {% set current_status = selected_product.Status if selected_product else 'Not Delivered' %}
+                            {% for status in ['Not Delivered', 'BarcodeOk', 'OK', 'Active', 'Pending'] %}
+                                <option value="{{ status }}" {% if current_status == status %}selected{% endif %}>{{ status }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    <label>
+                        Product images
+                        <input type="file" name="images" accept="image/*" multiple>
+                    </label>
+                    <div class="wide product-check-row">
+                        <label><input type="checkbox" name="free_delivery" {% if selected_product and selected_product.FreeDelivery %}checked{% endif %}> Free delivery</label>
+                        <label><input type="checkbox" name="return_30" {% if selected_product and selected_product['30DayRet'] %}checked{% endif %}> 30 day return</label>
+                        <label><input type="checkbox" name="cod" {% if selected_product and selected_product.COD %}checked{% endif %}> Cash on delivery</label>
+                        <label><input type="checkbox" name="approve_now"> Approve now</label>
+                    </div>
+                    <div class="wide">
+                        <strong>Sizes</strong>
+                        <div class="product-size-list">
+                            {% for size in product_options.sizes %}
+                                <label><input type="checkbox" name="sizes" value="{{ size.SizeId }}" {% if (selected_size_ids and size.SizeId|string in selected_size_ids) or (not selected_product and loop.first) %}checked{% endif %}> {{ size.SizeName }}</label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <label class="wide">
+                        Short description
+                        <textarea name="description" rows="3">{{ selected_product.PDescription|plain_product_text if selected_product else '' }}</textarea>
+                    </label>
+                    <label class="wide">
+                        Product details
+                        <textarea name="details" rows="4">{{ selected_product.PProductDetails|plain_product_text if selected_product else '' }}</textarea>
+                    </label>
+                    <label class="wide">
+                        Material & care
+                        <textarea name="material_care" rows="3">{{ selected_product.PMaterialCare|plain_product_text if selected_product else '' }}</textarea>
+                    </label>
+                </div>
+
+                {% if product_images %}
+                    <div class="product-image-list">
+                        {% for image in product_images %}
+                            <img src="{{ url_for('static', filename='ProductImage/' ~ image.PID ~ '/' ~ image.Name ~ image.Extention) }}" alt="Product image {{ loop.index }}">
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <div class="admin-crud-actions">
+                    <button type="submit" name="action" value="save">Save Product</button>
+                    <button class="secondary-button" type="submit" name="action" value="save" onclick="this.form.save_and_continue.value='1'">Save & Continue</button>
+                    <input type="hidden" name="save_and_continue" value="">
+                    {% if selected_product %}
+                        <a href="{{ url_for('admin_module_dashboard', module_slug='ecommerce-setup/product') }}">Cancel edit</a>
+                    {% endif %}
+                </div>
+            </form>
+
+            <section class="admin-data-panel">
+                <div class="admin-data-heading">
+                    <div>
+                        <h2>Product List</h2>
+                        <p>Admin can add, edit, delete and approve ecommerce products.</p>
+                    </div>
+                    <strong>{{ total_products }} rows</strong>
+                </div>
+                <form class="admin-crud-search" method="get">
+                    <input type="text" name="q" value="{{ q }}" placeholder="Search product, seller or product code">
+                    <button type="submit">Search</button>
+                    {% if q %}<a href="{{ url_for('admin_module_dashboard', module_slug='ecommerce-setup/product') }}">Clear</a>{% endif %}
+                </form>
+                <div class="admin-table-wrap">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Image</th>
+                                <th>ID</th>
+                                <th>Product</th>
+                                <th>Category</th>
+                                <th>Price</th>
+                                <th>Seller</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for product in products %}
+                                <tr>
+                                    <td>
+                                        {% if product.ImageName %}
+                                            <img class="admin-table-thumb" src="{{ url_for('static', filename='ProductImage/' ~ product.PID ~ '/' ~ product.ImageName ~ product.Extention) }}" alt="{{ product.PName }}">
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </td>
+                                    <td>#{{ product.PID }}</td>
+                                    <td>
+                                        <strong>{{ product.PName }}</strong>
+                                        <span>{{ product.ProductID or '' }}</span>
+                                    </td>
+                                    <td>{{ product.CategoryName or 'N/A' }}{% if product.SubcatName %}<br><small>{{ product.SubcatName }}</small>{% endif %}</td>
+                                    <td>Tk {{ product.PPrice or 0 }}{% if product.PSelPrice %}<br><small>Sale: Tk {{ product.PSelPrice }}</small>{% endif %}</td>
+                                    <td>{{ product.MainItemSellerName or 'admin' }}</td>
+                                    <td>{{ product.Status or 'Pending' }}</td>
+                                    <td>
+                                        <div class="admin-row-actions">
+                                            <a href="{{ url_for('admin_module_dashboard', module_slug='ecommerce-setup/product', edit=product.PID, q=q, page=page) }}">Edit</a>
+                                            <form method="post" onsubmit="return confirm('Delete this product?');">
+                                                <input type="hidden" name="product_id" value="{{ product.PID }}">
+                                                <button class="danger-button" type="submit" name="action" value="delete">Delete</button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% else %}
+                                <tr><td colspan="8">No product found.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% if total_pages > 1 %}
+                    <nav class="admin-pagination" aria-label="Product pagination">
+                        {% if page > 1 %}
+                            <a href="{{ url_for('admin_module_dashboard', module_slug='ecommerce-setup/product', q=q, page=page - 1) }}">Previous</a>
+                        {% else %}
+                            <span>Previous</span>
+                        {% endif %}
+                        <strong>Page {{ page }} of {{ total_pages }}</strong>
+                        {% if page < total_pages %}
+                            <a href="{{ url_for('admin_module_dashboard', module_slug='ecommerce-setup/product', q=q, page=page + 1) }}">Next</a>
+                        {% else %}
+                            <span>Next</span>
+                        {% endif %}
+                    </nav>
+                {% endif %}
+            </section>
+        </section>
+    </section>
+</main>
+{% endblock %}

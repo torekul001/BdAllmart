@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block body %}
+<header class="store-top">
+    <div class="store-bar">
+        <a href="{{ url_for('login') }}">Home</a>
+        {% if session.get("user_id") %}
+            <a href="{{ user_dashboard_url }}">Dashboard</a>
+            <a href="{{ url_for('logout') }}">Logout</a>
+        {% else %}
+            <a href="{{ url_for('register') }}">Register</a>
+            <a href="{{ url_for('login') }}#login-panel">Login</a>
+        {% endif %}
+    </div>
+    <div class="store-header">
+        <a class="market-logo" href="{{ url_for('login') }}"><img src="{{ url_for('static', filename='bdallmartLogo.png', v='20260518-logo') }}" alt="bdallmart.com"><strong>bdallmart.com</strong></a>
+        <form class="search-box" method="get" action="{{ url_for('ask_chat') }}">
+            <input type="search" name="q" placeholder="Ask about {{ category.name }}">
+            <button type="submit">Ask</button>
+        </form>
+        <div class="quick-actions">
+            <a href="{{ request.path }}?cart=open">Cart ({{ cart_count }})</a>
+            <span>Orders</span>
+            <span>Messages</span>
+        </div>
+    </div>
+    <nav class="store-nav">
+        {% for item in categories %}
+            <div class="menu-item">
+                <a href="{{ url_for('category_products', category_id=item.id) }}">{{ item.name }}</a>
+                {% if item.subcategories %}
+                    <div class="submenu">
+                        {% for sub in item.subcategories %}
+                            <a href="{{ url_for('category_products', category_id=item.id, sub=sub.id) }}">{{ sub.name }}</a>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+        {% endfor %}
+    </nav>
+</header>
+
+<main class="category-page">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="flash-stack">
+                {% for category, message in messages %}
+                    <div class="message {{ category }}">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <section class="category-hero">
+        <div>
+            <span>Category</span>
+            <h1>{{ subcategory.name if subcategory else category.name }}</h1>
+            <p>{{ subcategory.description or category.description or "Browse products from this category." }}</p>
+        </div>
+        <img src="{{ url_for('legacy_assets', asset_path=(subcategory.image if subcategory else category.image)) }}" alt="{{ subcategory.name if subcategory else category.name }}">
+    </section>
+
+    {% if subcategories %}
+        <section class="filter-strip">
+            <a class="{{ 'active' if not subcategory else '' }}" href="{{ url_for('category_products', category_id=category.id) }}">All {{ category.name }}</a>
+            {% for sub in subcategories %}
+                <a class="{{ 'active' if subcategory and subcategory.id == sub.id else '' }}" href="{{ url_for('category_products', category_id=category.id, sub=sub.id) }}">{{ sub.name }}</a>
+            {% endfor %}
+        </section>
+    {% endif %}
+
+    {% include "_training_courses.html" %}
+
+    <section class="category-result-head">
+        <strong>{{ products|length }} products found</strong>
+        <span>{{ category.name }}{% if subcategory %} / {{ subcategory.name }}{% endif %}</span>
+    </section>
+
+    <section class="product-grid-page">
+        {% for product in products %}
+            <article class="product-card">
+                <a class="product-media" href="{{ url_for('product_details', product_id=product.id) }}">
+                    <img src="{{ product.image|legacy_asset }}" alt="{{ product.name }}">
+                </a>
+                <h3><a href="{{ url_for('product_details', product_id=product.id) }}">{{ product.name }}</a></h3>
+                <p>Price: Tk {{ product.price }}</p>
+                <span class="seller-name">{{ product.seller }}</span>
+                <form class="card-cart-form" method="post" action="{{ url_for('add_to_cart', product_id=product.id) }}">
+                    <input type="hidden" name="next" value="{{ request.path }}">
+                    <button type="submit">Add</button>
+                </form>
+                {% if session.get("user_id") and (session.get("category") or "")|trim|lower in ["customer", "consumer", "designer", "freelancer"] %}
+                    <form class="card-cart-form profile-add-form" method="post" action="{{ url_for('add_product_to_profile', product_id=product.id) }}">
+                        <input type="hidden" name="next" value="{{ request.path }}">
+                        <button type="submit">Add to Profile</button>
+                    </form>
+                {% else %}
+                    <a class="profile-action-link" href="{{ url_for('product_details', product_id=product.id) }}">View Details</a>
+                {% endif %}
+            </article>
+        {% else %}
+            <div class="empty-state">
+                <strong>No products found</strong>
+                <span>Try another subcategory or return to all products.</span>
+            </div>
+        {% endfor %}
+    </section>
+</main>
+{% endblock %}

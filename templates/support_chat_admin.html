@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+{% block body %}
+<main class="dashboard">
+    <aside class="sidebar">
+        <a class="brand" href="{{ url_for('dashboard') }}"><img src="{{ url_for('static', filename='bdallmartLogo.png', v='20260518-logo') }}" alt="bdallmart.com"> bdallmart.com</a>
+        <div class="sidebar-user">
+            <strong>{{ session.get("username") }}</strong>
+            <span>{{ role }}</span>
+        </div>
+        <nav>
+            {% for group_title, group_items in menu_groups %}
+                <div class="sidebar-menu-group">
+                    <h3>{{ group_title }}</h3>
+                    {% for label, href in group_items %}
+                        <a class="{% if request.path == href %}active{% endif %}" href="{{ href }}">{{ label }}</a>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+            {% include '_workspace_menu.html' %}
+        </nav>
+        <a class="sidebar-logout" href="{{ url_for('logout') }}">Logout</a>
+    </aside>
+
+    <section class="content">
+        <header class="dashboard-topbar">
+            <div>
+                <span>{{ accent }}</span>
+                <h1>{{ title }}</h1>
+                <p>Customer service request gulo dekhe reply korun.</p>
+            </div>
+            <div class="dashboard-top-actions">
+                <a class="workspace-entry" href="{{ url_for('market.home') }}">New Features ↗</a>
+                <a href="{{ url_for('admin_dashboard') }}">Admin Dashboard</a>
+                <a href="{{ url_for('login') }}">Marketplace</a>
+            </div>
+        </header>
+
+        {% with messages_flash = get_flashed_messages(with_categories=true) %}
+            {% if messages_flash %}
+                <div class="flash-list">
+                    {% for category, message in messages_flash %}
+                        <div class="message {{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <section class="support-admin-grid">
+            <aside class="support-request-list">
+                <form class="support-filter" method="get">
+                    <input type="text" name="contact_no" value="{{ contact_no }}" placeholder="Search contact no">
+                    <select name="status">
+                        <option value="">All status</option>
+                        {% for status in ["Open", "Answered", "Escalated", "Resolved", "Closed"] %}
+                            <option value="{{ status }}" {% if selected_status == status %}selected{% endif %}>{{ status }}</option>
+                        {% endfor %}
+                    </select>
+                    <select name="issue_type">
+                        <option value="">All issues</option>
+                        {% for issue in issue_types %}
+                            <option value="{{ issue }}" {% if selected_issue_type == issue %}selected{% endif %}>{{ issue }}</option>
+                        {% endfor %}
+                    </select>
+                    <select name="priority">
+                        <option value="">All priority</option>
+                        {% for priority in priorities %}
+                            <option value="{{ priority }}" {% if selected_priority == priority %}selected{% endif %}>{{ priority }}</option>
+                        {% endfor %}
+                    </select>
+                    <select name="department">
+                        <option value="">All department</option>
+                        {% for department in departments %}
+                            <option value="{{ department }}" {% if selected_department == department %}selected{% endif %}>{{ department }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit">Filter</button>
+                </form>
+                <div class="support-list-scroll">
+                    {% for item in requests %}
+                        <a class="support-request-card {% if selected_id|string == item.Id|string %}active{% endif %}" href="{{ url_for('admin_module_dashboard', module_slug='customer-chat', selected=item.Id, status=selected_status, contact_no=contact_no, issue_type=selected_issue_type, priority=selected_priority, department=selected_department) }}">
+                            <strong>#{{ item.Id }} - {{ item.CustomerName or item.ContactNo }}</strong>
+                            <span>{{ item.ContactNo }} | {{ item.IssueType or "Support" }} | {{ item.Priority or "Low" }}</span>
+                            <span>{{ item.Department or "Support" }} | {{ item.Status }}{% if item.AssignedTo %} | {{ item.AssignedTo }}{% endif %}</span>
+                            <small>{{ item.Question or "No question text" }}</small>
+                        </a>
+                    {% else %}
+                        <div class="empty-state compact">
+                            <strong>No chat request found</strong>
+                            <span>Customer chatbot theke request korle ekhane show korbe.</span>
+                        </div>
+                    {% endfor %}
+                </div>
+            </aside>
+
+            <section class="support-conversation">
+                {% if selected_request %}
+                    <div class="support-customer-info">
+                        <div>
+                            <span>Customer</span>
+                            <strong>{{ selected_request.CustomerName or "Not added" }}</strong>
+                        </div>
+                        <div>
+                            <span>Contact No</span>
+                            <strong>{{ selected_request.ContactNo }}</strong>
+                        </div>
+                        <div>
+                            <span>Email</span>
+                            <strong>{{ selected_request.Email or "Not added" }}</strong>
+                        </div>
+                        <div>
+                            <span>Issue</span>
+                            <strong>{{ selected_request.IssueType or "Support" }}</strong>
+                        </div>
+                        <div>
+                            <span>Order ID</span>
+                            <strong>{{ selected_request.OrderId or "N/A" }}</strong>
+                        </div>
+                        <div>
+                            <span>Priority</span>
+                            <strong>{{ selected_request.Priority or "Low" }}</strong>
+                        </div>
+                        <div>
+                            <span>Department</span>
+                            <strong>{{ selected_request.Department or "Support" }}</strong>
+                        </div>
+                        <div>
+                            <span>Assigned</span>
+                            <strong>{{ selected_request.AssignedTo or "Not assigned" }}</strong>
+                        </div>
+                        <div>
+                            <span>Escalated To</span>
+                            <strong>{{ selected_request.EscalatedTo or "N/A" }}</strong>
+                        </div>
+                        <div>
+                            <span>Address</span>
+                            <strong>{{ selected_request.Address }}</strong>
+                        </div>
+                        <div>
+                            <span>Status</span>
+                            <strong>{{ selected_request.Status }}</strong>
+                        </div>
+                        <div>
+                            <span>Feedback</span>
+                            <strong>{% if selected_request.FeedbackRating %}{{ selected_request.FeedbackRating }}/5{% else %}Pending{% endif %}</strong>
+                        </div>
+                    </div>
+                    {% if selected_request.AttachmentUrl %}
+                        <div class="support-attachment">
+                            <strong>Screenshot/File:</strong>
+                            <span>{{ selected_request.AttachmentUrl }}</span>
+                        </div>
+                    {% endif %}
+                    <form class="support-ticket-form" method="post">
+                        <input type="hidden" name="action" value="update">
+                        <input type="hidden" name="request_id" value="{{ selected_request.Id }}">
+                        <input type="text" name="assigned_to" value="{{ selected_request.AssignedTo or session.get('username') or 'Admin' }}" placeholder="Assign agent">
+                        <select name="status">
+                            {% for status in ["Open", "Answered", "Escalated", "Resolved", "Closed"] %}
+                                <option value="{{ status }}" {% if selected_request.Status == status %}selected{% endif %}>{{ status }}</option>
+                            {% endfor %}
+                        </select>
+                        <select name="priority">
+                            {% for priority in priorities %}
+                                <option value="{{ priority }}" {% if selected_request.Priority == priority %}selected{% endif %}>{{ priority }}</option>
+                            {% endfor %}
+                        </select>
+                        <select name="department">
+                            {% for department in departments %}
+                                <option value="{{ department }}" {% if selected_request.Department == department %}selected{% endif %}>{{ department }}</option>
+                            {% endfor %}
+                        </select>
+                        <input type="text" name="escalated_to" value="{{ selected_request.EscalatedTo or '' }}" placeholder="Escalate to supervisor/team">
+                        <button type="submit">Update Ticket</button>
+                    </form>
+                    <div class="support-message-list">
+                        {% for message in messages %}
+                            <article class="support-message {{ 'rep' if message.SenderType == 'Representative' else 'customer' }}">
+                                <strong>{{ message.SenderName or message.SenderType }}</strong>
+                                <p>{{ message.Message }}</p>
+                                <small>{{ message.CreatedAt }}</small>
+                            </article>
+                        {% else %}
+                            <div class="empty-state compact">
+                                <strong>No messages yet</strong>
+                                <span>Reply dile conversation start hobe.</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    <form class="support-reply-form" method="post">
+                        <input type="hidden" name="request_id" value="{{ selected_request.Id }}">
+                        <textarea name="message" rows="4" placeholder="Write representative answer..." required></textarea>
+                        <div>
+                            <select name="status">
+                                <option value="Answered">Answered</option>
+                                <option value="Open">Keep Open</option>
+                                <option value="Escalated">Escalated</option>
+                                <option value="Resolved">Resolved</option>
+                                <option value="Closed">Closed</option>
+                            </select>
+                            <button type="submit">Send Reply</button>
+                        </div>
+                    </form>
+                {% else %}
+                    <div class="empty-state">
+                        <strong>No request selected</strong>
+                        <span>Select a customer chat request from left side.</span>
+                    </div>
+                {% endif %}
+            </section>
+        </section>
+    </section>
+</main>
+{% endblock %}

@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block body %}
+<main class="pos-report-page">
+    {% if not order %}
+        <section class="pos-report-empty">
+            <h1>POS report not found</h1>
+            <a href="{{ url_for('pos_sale') }}">Back to POS</a>
+        </section>
+    {% else %}
+        <section class="pos-report-actions">
+            <button type="button" onclick="window.print()">Print</button>
+            <a href="{{ url_for('pos_sale') }}">Cancel</a>
+        </section>
+        <section class="pos-receipt">
+            <header>
+                <h1>bdallmart.com</h1>
+                <p>POS Sale Receipt</p>
+            </header>
+            <div class="pos-receipt-meta">
+                <div><span>Order ID</span><strong>{{ order.order_id }}</strong></div>
+                <div><span>Date</span><strong>{{ order.date }}</strong></div>
+                <div><span>Customer</span><strong>{{ order.customer_name or order.customer_id }}</strong></div>
+                <div><span>Mobile</span><strong>{{ order.customer_mobile }}</strong></div>
+                <div class="wide"><span>Delivery Address</span><strong>{{ order.delivery_address }}</strong></div>
+                <div><span>Sales By</span><strong>{{ order.sales_employee }}</strong></div>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th>Qty</th>
+                        <th>Price</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in order["items"] %}
+                        <tr>
+                            <td>
+                                <div class="pos-receipt-item">
+                                    <img src="{{ item.ImagePath|legacy_asset }}" alt="{{ item.Pname }}">
+                                    <div>
+                                        <strong>{{ item.Pname }}</strong>
+                                        <span>{{ item.Barcode }}</span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>{{ item.Quantity }}</td>
+                            <td>{{ "%.2f"|format(item.Price|float) }}</td>
+                            <td>{{ "%.2f"|format(item.PricetoMainsailer|float) }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <footer>
+                <div><span>Total Item</span><strong>{{ order.item_count }}</strong></div>
+                <div><span>Sub Total</span><strong>{{ "%.2f"|format(order.subtotal) }}</strong></div>
+                <div class="receipt-total"><span>Total</span><strong>{{ "%.2f"|format(order.total) }}</strong></div>
+            </footer>
+            <p class="pos-receipt-thanks">Thank you for shopping with bdallmart.com</p>
+        </section>
+    {% endif %}
+</main>
+{% endblock %}

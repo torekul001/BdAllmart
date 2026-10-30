@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% block body %}
+<main class="dashboard">
+    <aside class="sidebar">
+        <a class="brand" href="{{ url_for('admin_dashboard') }}"><img src="{{ url_for('static', filename='bdallmartLogo.png', v='20260518-logo') }}" alt="bdallmart.com"> bdallmart.com</a>
+        <div class="sidebar-user">
+            <strong>{{ session.get("username") }}</strong>
+            <span>{{ role }}</span>
+        </div>
+        <nav>
+            {% for group_title, group_items in menu_groups %}
+                <div class="sidebar-menu-group">
+                    <h3>{{ group_title }}</h3>
+                    {% for label, href in group_items %}
+                        <a class="{% if request.path == href %}active{% endif %}" href="{{ href }}">{{ label }}</a>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+            {% include '_workspace_menu.html' %}
+        </nav>
+        <a class="sidebar-logout" href="{{ url_for('logout') }}">Logout</a>
+    </aside>
+
+    <section class="content">
+        <header class="dashboard-topbar">
+            <div>
+                <span>{{ accent }}</span>
+                <h1>{{ title }}</h1>
+                <p>{{ config.source }} theke Python admin CRUD connected.</p>
+            </div>
+            <div class="dashboard-top-actions">
+                <a class="workspace-entry" href="{{ url_for('market.home') }}">New Features ↗</a>
+                <a href="{{ url_for('admin_dashboard') }}">Dashboard</a>
+                <a href="{{ url_for('login') }}">Marketplace</a>
+            </div>
+        </header>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="message {{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <section class="admin-crud-tabs">
+            {% for label, slug in setup_links %}
+                <a class="{% if slug == setup_slug %}active{% endif %}" href="{{ url_for('admin_module_dashboard', module_slug='ecommerce-setup/' ~ slug) }}">{{ label }}</a>
+            {% endfor %}
+        </section>
+
+        <section class="admin-crud-grid">
+            <form class="admin-crud-card" method="post" enctype="multipart/form-data">
+                <h2>{{ "Edit" if selected_row else "New" }} {{ config.title.replace("Add ", "") }}</h2>
+                <input type="hidden" name="item_id" value="{{ selected_row[config.id] if selected_row else '' }}">
+
+                {% if config.parent %}
+                    <label>
+                        Category
+                        <select name="category_id" required>
+                            <option value="">Select category</option>
+                            {% for category in categories %}
+                                <option value="{{ category.id }}" {% if selected_row and selected_row.Catid == category.id %}selected{% endif %}>{{ category.CategoryName }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                {% endif %}
+
+                <label>
+                    Name
+                    <input type="text" name="name" required maxlength="50" value="{{ selected_row[config.name] if selected_row else '' }}">
+                </label>
+
+                {% if config.serial %}
+                    <label>
+                        Serial No
+                        <input type="number" name="serial" min="0" value="{{ selected_row[config.serial] if selected_row and selected_row[config.serial] else '' }}" placeholder="1">
+                    </label>
+                {% endif %}
+
+                {% if config.description %}
+                    <label>
+                        Description
+                        <textarea name="description" rows="3">{{ selected_row[config.description] if selected_row else '' }}</textarea>
+                    </label>
+                {% endif %}
+
+                {% if config.image %}
+                    <label>
+                        Image
+                        <input type="file" name="image" accept="image/*">
+                    </label>
+                    {% if selected_row and selected_row[config.image] %}
+                        <img class="admin-crud-preview" src="{{ selected_row[config.image]|legacy_asset }}" alt="{{ selected_row[config.name] }}">
+                    {% endif %}
+                {% endif %}
+
+                <div class="admin-crud-actions">
+                    <button type="submit" name="action" value="save">Save</button>
+                    {% if selected_row %}
+                        <a href="{{ url_for('admin_module_dashboard', module_slug='ecommerce-setup/' ~ setup_slug) }}">Cancel edit</a>
+                    {% endif %}
+                </div>
+            </form>
+
+            <section class="admin-data-panel">
+                <div class="admin-data-heading">
+                    <div>
+                        <h2>{{ config.title.replace("Add ", "") }} List</h2>
+                        <p>Insert, edit and delete records from old ecommerce setup table.</p>
+                    </div>
+                    <strong>{{ rows|length }} rows</strong>
+                </div>
+                <div class="admin-table-wrap">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                {% if config.serial %}<th>Serial</th>{% endif %}
+                                {% if setup_slug == "subcategory" %}<th>Category</th>{% endif %}
+                                {% if config.image %}<th>Image</th>{% endif %}
+                                <th>Name</th>
+                                {% if config.description %}<th>Description</th>{% endif %}
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in rows %}
+                                <tr>
+                                    <td>{{ row[config.id] }}</td>
+                                    {% if config.serial %}<td>{{ row[config.serial] or '' }}</td>{% endif %}
+                                    {% if setup_slug == "subcategory" %}<td>{{ row.CategoryName or row.Catid }}</td>{% endif %}
+                                    {% if config.image %}
+                                        <td>
+                                            {% if row[config.image] %}
+                                                <img class="admin-table-thumb" src="{{ row[config.image]|legacy_asset }}" alt="{{ row[config.name] }}">
+                                            {% else %}
+                                                N/A
+                                            {% endif %}
+                                        </td>
+                                    {% endif %}
+                                    <td>{{ row[config.name] }}</td>
+                                    {% if config.description %}<td>{{ row[config.description] }}</td>{% endif %}
+                                    <td>
+                                        <div class="admin-row-actions">
+                                            <a href="{{ url_for('admin_module_dashboard', module_slug='ecommerce-setup/' ~ setup_slug, edit=row[config.id]) }}">Edit</a>
+                                            <form method="post" onsubmit="return confirm('Delete this record?');">
+                                                <input type="hidden" name="item_id" value="{{ row[config.id] }}">
+                                                <button class="danger-button" type="submit" name="action" value="delete">Delete</button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% else %}
+                                <tr><td colspan="6">No record found.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </section>
+    </section>
+</main>
+{% endblock %}

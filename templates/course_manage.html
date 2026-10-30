@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% block body %}
+<main class="dashboard">
+    <aside class="sidebar">
+        <a class="brand" href="{{ url_for('dashboard') }}"><img src="{{ url_for('static', filename='bdallmartLogo.png', v='20260518-logo') }}" alt="bdallmart.com"> bdallmart.com</a>
+        <div class="sidebar-user">
+            <strong>{{ session.get("username") }}</strong>
+            <span>{{ session.get("category") }}</span>
+        </div>
+        <nav>
+            {% for label, href in menu %}
+                <a class="{% if request.path == href %}active{% endif %}" href="{{ href }}">{{ label }}</a>
+            {% endfor %}
+            {% include '_workspace_menu.html' %}
+        </nav>
+        <a class="sidebar-logout" href="{{ url_for('logout') }}">Logout</a>
+    </aside>
+
+    <section class="content">
+        <header class="dashboard-topbar">
+            <div>
+                <span>Course management</span>
+                <h1>{{ 'Edit Course' if editing_video else 'Add YouTube Course Video' }}</h1>
+                <p>Create lessons from YouTube links. Design public course content below. Assigned lesson videos remain available through Student View.</p>
+            </div>
+            <div class="dashboard-top-actions">
+                <a class="workspace-entry" href="{{ url_for('market.home') }}">New Features ↗</a>
+                <a href="{{ url_for('course_assign') }}">Assign Videos</a>
+                <a href="{{ url_for('my_courses') }}">Student View</a>
+            </div>
+        </header>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-stack">
+                    {% for category, message in messages %}
+                        <div class="message {{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <section class="course-layout course-management-layout">
+            <form id="course-edit-form" class="course-form panel-card" method="post">
+                <header class="course-editor-heading"><span>LESSON WORKSPACE</span><h2>{{ 'Edit Course' if editing_video else 'New Lesson' }}</h2><p>Build your lesson with clear content, images, and video.</p></header>
+                <input type="hidden" name="video_id" value="{{ editing_video.Id if editing_video else '' }}">
+                <label>
+                    Course Category
+                    <select name="category" required>
+                        <option value="">Select course category</option>
+                        {% for category in categories %}
+                            <option value="{{ category }}" {% if selected_category == category %}selected{% endif %}>{{ category }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label>
+                    Lesson title
+                    <input name="title" value="{{ request.form.get('title', editing_video.Name if editing_video else '') }}" required placeholder="Class 01 - Introduction">
+                </label>
+                <label>
+                    YouTube link or video ID
+                    <input name="youtube_link" value="{{ request.form.get('youtube_link', editing_video.VideoLink if editing_video else '') }}" required placeholder="https://www.youtube.com/watch?v=...">
+                </label>
+                <div class="course-content-editor">
+                    <label for="course-content">Public course content</label>
+                    <p>Describe what students will learn. This content appears in Training on the storefront.</p>
+                    <textarea id="course-content" name="content_html" rows="12">{{ content_draft }}</textarea>
+                    <div id="course-editor" hidden>
+                        <div class="rich-editor-toolbar" aria-label="Course content tools">
+                            <button type="button" data-cmd="bold">Bold</button>
+                            <button type="button" data-cmd="italic">Italic</button>
+                            <button type="button" data-cmd="formatBlock" data-value="h2">Heading</button>
+                            <button type="button" data-cmd="formatBlock" data-value="p">Paragraph</button>
+                            <button type="button" data-cmd="insertUnorderedList">Bullet list</button>
+                            <button type="button" data-cmd="insertOrderedList">Numbered list</button>
+                            <button type="button" id="course-add-link">Link</button>
+                            <button type="button" id="course-add-image">Upload image</button>
+                            <button type="button" id="course-add-video">YouTube video</button>
+                        </div>
+                        <div class="rich-editor-canvas course-rich-content" contenteditable="true" role="textbox" aria-label="Public course content" aria-multiline="true"></div>
+                        <input id="course-image" type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden>
+                        <p id="course-editor-status" role="status"></p>
+                    </div>
+                </div>
+                <button type="submit">{{ 'Update Course' if editing_video else 'Add Course Video' }}</button>
+                {% if editing_video %}<a href="{{ url_for('course_manage') }}">Cancel editing</a>{% endif %}
+            </form>
+
+            <section class="panel-card course-library-panel">
+                <div class="course-list-heading">
+                    <div>
+                        <h2>All Course Videos</h2>
+                        <p>{{ videos|length }} lessons found{% if selected_category %} in {{ selected_category }}{% endif %}</p>
+                    </div>
+                    <form method="get" class="inline-filter">
+                        <select name="category" onchange="this.form.submit()">
+                            <option value="">All course categories</option>
+                            {% for category in categories %}
+                                <option value="{{ category }}" {% if selected_category == category %}selected{% endif %}>{{ category }}</option>
+                            {% endfor %}
+                        </select>
+                    </form>
+                </div>
+
+                <div class="course-group-stack">
+                    {% for group in video_groups %}
+                        <section class="course-video-group">
+                            <header>
+                                <div>
+                                    <span>Course Category</span>
+                                    <h3>{{ group.category }}</h3>
+                                </div>
+                                <span>{{ group.videos|length }} video{% if group.videos|length != 1 %}s{% endif %}</span>
+                            </header>
+                            <div class="course-video-grid">
+                                {% for video in group.videos %}
+                                    <article class="course-video-card course-compact-card">
+                                        <a class="course-compact-thumb" href="{{ url_for('training_details', video_id=video.Id) }}" aria-label="View {{ video.Name }}">
+                                            <img src="https://i.ytimg.com/vi/{{ video.VideoLink|urlencode }}/default.jpg" alt="" loading="lazy">
+                                            <span aria-hidden="true">▶</span>
+                                        </a>
+                                        <div class="course-compact-info">
+                                            <strong>{{ video.Name }}</strong>
+                                            <span>{{ video.Course }}</span>
+                                        </div>
+                                        <div class="course-card-actions">
+                                            <a class="course-edit-button" href="{{ url_for('course_manage', edit=video.Id) }}#course-edit-form">Edit Course</a>
+                                            <a class="course-details-button" href="{{ url_for('training_details', video_id=video.Id) }}">View Details</a>
+                                        </div>
+                                        <form method="post" action="{{ url_for('course_video_delete', video_id=video.Id) }}">
+                                            <input type="hidden" name="category" value="{{ selected_category }}">
+                                            <button class="danger-button" type="submit">Delete</button>
+                                        </form>
+                                    </article>
+                                {% endfor %}
+                            </div>
+                        </section>
+                    {% else %}
+                        <div class="empty-state">
+                            <strong>No course videos yet</strong>
+                            <span>Add a YouTube lesson to start this course.</span>
+                        </div>
+                    {% endfor %}
+                </div>
+            </section>
+        </section>
+    </section>
+</main>
+<script src="{{ url_for('static', filename='course-editor.js') }}" defer></script>
+{% endblock %}

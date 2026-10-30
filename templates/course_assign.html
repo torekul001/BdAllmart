@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block body %}
+<main class="dashboard">
+    <aside class="sidebar">
+        <a class="brand" href="{{ url_for('dashboard') }}"><img src="{{ url_for('static', filename='bdallmartLogo.png', v='20260518-logo') }}" alt="bdallmart.com"> bdallmart.com</a>
+        <div class="sidebar-user">
+            <strong>{{ session.get("username") }}</strong>
+            <span>{{ session.get("category") }}</span>
+        </div>
+        <nav>
+            {% for label, href in menu %}
+                <a class="{% if request.path == href %}active{% endif %}" href="{{ href }}">{{ label }}</a>
+            {% endfor %}
+            {% include '_workspace_menu.html' %}
+        </nav>
+        <a class="sidebar-logout" href="{{ url_for('logout') }}">Logout</a>
+    </aside>
+
+    <section class="content">
+        <header class="dashboard-topbar">
+            <div>
+                <span>Student access control</span>
+                <h1>Assign Course Videos</h1>
+                <p>Select a student, choose a course category, then assign the lessons that student can watch.</p>
+            </div>
+            <div class="dashboard-top-actions">
+                <a class="workspace-entry" href="{{ url_for('market.home') }}">New Features ↗</a>
+                <a href="{{ url_for('course_manage') }}">Add Video</a>
+                <a href="{{ url_for('my_courses') }}">Student View</a>
+            </div>
+        </header>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-stack">
+                    {% for category, message in messages %}
+                        <div class="message {{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <section class="course-layout">
+            <section class="panel-card">
+                <h2>Select Student & Category</h2>
+                <form method="get" class="course-filter-form">
+                    <label>
+                        Student
+                        <select name="student" onchange="this.form.submit()">
+                            <option value="">Select student</option>
+                            {% for student in students %}
+                                <option value="{{ student.StdId }}" {% if selected_student == student.StdId %}selected{% endif %}>
+                                    {{ student.Name }} - {{ student.StdId }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    <label>
+                        Course Category
+                        <select name="category" onchange="this.form.submit()">
+                            <option value="">Select course category</option>
+                            {% for category in categories %}
+                                <option value="{{ category }}" {% if selected_course == category %}selected{% endif %}>{{ category }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                </form>
+
+                <div class="assigned-box">
+                    <strong>Already Assigned</strong>
+                    {% if assigned_videos %}
+                        {% for video in assigned_videos %}
+                            <span>{{ video.Name }} - {{ video.Course }}</span>
+                        {% endfor %}
+                    {% else %}
+                        <span>No assigned lessons for this student yet.</span>
+                    {% endif %}
+                </div>
+            </section>
+
+            <form class="panel-card" method="post">
+                <input type="hidden" name="student" value="{{ selected_student }}">
+                <input type="hidden" name="category" value="{{ selected_course }}">
+                <div class="course-list-heading">
+                    <div>
+                        <h2>Available Lessons</h2>
+                        <p>{{ videos|length }} lessons{% if selected_course %} in {{ selected_course }}{% endif %}</p>
+                    </div>
+                    <button type="submit">Assign Selected</button>
+                </div>
+                <div class="course-video-grid">
+                    {% for video in videos %}
+                        <label class="course-video-card selectable {% if video.VideoLink in assigned_links %}assigned{% endif %}">
+                            <iframe src="https://www.youtube.com/embed/{{ video.VideoLink }}" allowfullscreen></iframe>
+                            <span class="check-row">
+                                <input type="checkbox" name="video_ids" value="{{ video.Id }}" {% if video.VideoLink in assigned_links %}checked disabled{% endif %}>
+                                <strong>{{ video.Name }}</strong>
+                            </span>
+                            <small>{{ video.CourseCategory or video.Course }}</small>
+                        </label>
+                    {% else %}
+                        <div class="empty-state">
+                            <strong>No lessons found</strong>
+                            <span>Select a course category with uploaded videos.</span>
+                        </div>
+                    {% endfor %}
+                </div>
+            </form>
+        </section>
+    </section>
+</main>
+{% endblock %}

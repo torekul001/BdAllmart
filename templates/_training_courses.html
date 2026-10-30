@@ -1,0 +1,18 @@
+{% if training_courses %}
+<section class="panel-card training-catalog" id="training-courses">
+    <h2>Training Courses</h2>
+    <p>Explore course content, topics, and previews.</p>
+    <div class="course-video-grid">
+        {% for course in training_courses %}
+        <article class="course-video-card">
+            <a href="{{ url_for('training_details', video_id=course.Id) }}">
+                <img class="training-thumbnail" src="https://i.ytimg.com/vi/{{ course.VideoLink|urlencode }}/hqdefault.jpg" alt="{{ course.Name }}" loading="lazy">
+                <h3>{{ course.Name }}</h3>
+            </a>
+            <span>{{ course.CourseCategory or course.Course }}</span>
+            <a class="profile-action-link" href="{{ url_for('training_details', video_id=course.Id) }}">View Course Details</a>
+        </article>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}

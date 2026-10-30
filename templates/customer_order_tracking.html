@@ -1,0 +1,98 @@
+{% extends "market/module_layout.html" if workspace_mode else "base.html" %}
+{% block body %}
+{% set list_endpoint = tracking_list_endpoint|default("customer_order_tracking", true) %}
+{% set detail_endpoint = tracking_detail_endpoint|default("customer_order_tracking_details", true) %}
+{% set secondary_url = tracking_secondary_url|default(url_for("customer_workspace", section="orders"), true) %}
+{% set secondary_label = tracking_secondary_label|default("Ecommerce Orders", true) %}
+{% set jobs_url = tracking_jobs_url|default(url_for("customer_workspace", section="jobs"), true) %}
+{% set messages_url = tracking_messages_url|default(url_for("customer_workspace", section="messages"), true) %}
+<main class="{{ 'workspace-module-body' if workspace_mode else 'dashboard' }}">
+    {% if not workspace_mode %}<aside class="sidebar">
+        <a class="brand" href="{{ url_for('dashboard') }}"><img src="{{ url_for('static', filename='bdallmartLogo.png', v='20260518-logo') }}" alt="bdallmart.com"> bdallmart.com</a>
+        <div class="sidebar-user">
+            <strong>{{ session.get("username") }}</strong>
+            <span>{{ role }}</span>
+        </div>
+        <nav>
+            {% for label, href in menu %}
+                <a class="{% if request.path == href %}active{% endif %}" href="{{ href }}">{{ label }}</a>
+            {% endfor %}
+            {% include '_workspace_menu.html' %}
+        </nav>
+        <a class="sidebar-logout" href="{{ url_for('logout') }}">Logout</a>
+    </aside>{% endif %}
+
+    <section class="{{ 'workspace-module-content' if workspace_mode else 'content' }} order-tracking-page">
+        <header class="dashboard-topbar">
+            <div>
+                <span>{{ accent }}</span>
+                <h1>Order Tracking</h1>
+                <p>Track ecommerce orders, delivery status, payment status and details from one place.</p>
+            </div>
+            <div class="dashboard-top-actions">
+                <a class="workspace-entry" href="{{ url_for('market.home') }}">New Features ↗</a>
+                <a href="{{ url_for('login') }}">Marketplace</a>
+                <a href="{{ secondary_url }}">{{ secondary_label }}</a>
+            </div>
+        </header>
+
+        <form class="tracking-filter" method="get">{% if workspace_mode %}<input type="hidden" name="workspace" value="1">{% endif %}
+            <label>From <input type="date" name="date_from" value="{{ date_from }}"></label>
+            <label>To <input type="date" name="date_to" value="{{ date_to }}"></label>
+            <label>Status
+                <select name="status">
+                    <option value="">All</option>
+                    {% for status in ["Pending", "To DeliveryMan", "Picked Up", "Complete", "Sold", "Return"] %}
+                        <option value="{{ status }}" {% if selected_status == status %}selected{% endif %}>{{ status }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <button type="submit">Search</button>
+        </form>
+
+        <section class="tracking-tabs">
+            <a class="active" href="{{ url_for(list_endpoint) }}">Store</a>
+            <a href="{{ jobs_url }}">Jobs</a>
+            <a href="{{ messages_url }}">Messages</a>
+        </section>
+
+        <section class="tracking-list">
+            {% for order in orders %}
+                <article class="tracking-order-card">
+                    <header>
+                        <div>
+                            <strong>Order ID: #{{ order.orderid }}</strong>
+                            <span>{{ order.LineCount }} product{% if order.LineCount != 1 %}s{% endif %} / {{ order.TotalQty or 0 }} item{% if order.TotalQty != 1 %}s{% endif %}</span>
+                        </div>
+                        <small>Regular Delivery</small>
+                    </header>
+                    <div class="tracking-order-body">
+                        <div class="tracking-customer">
+                            <span class="tracking-bag-icon">□</span>
+                            <div>
+                                <strong>{{ order.CustomerName or session.get("username") }}</strong>
+                                <span>{{ order.CustomerMobile or session.get("phone") }}</span>
+                                <p>{{ order.CustomerAddress or "Address not found" }}</p>
+                            </div>
+                        </div>
+                        <div class="tracking-order-money">
+                            <span>Date: {{ order.OrderDate }}</span>
+                            <strong>Tk {{ "%.2f"|format(order.TotalAmount or 0) }}</strong>
+                            <b>{{ "Paid" if (order.Status or "")|lower in ["complete", "sold", "delivered"] else "Unpaid" }}</b>
+                        </div>
+                    </div>
+                    <footer>
+                        <div>Status: <span>{{ order.Status or "Pending" }}</span></div>
+                        <a href="{{ url_for(detail_endpoint, order_id=order.orderid) }}">View Details</a>
+                    </footer>
+                </article>
+            {% else %}
+                <div class="empty-state">
+                    <strong>No order found</strong>
+                    <span>Your tracking orders will appear here after checkout.</span>
+                </div>
+            {% endfor %}
+        </section>
+    </section>
+</main>
+{% endblock %}

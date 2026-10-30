@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ title or "bdallmart.com" }}</title>
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico', v='20260518-logo') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css', v='20261015-compact-course-video') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='workspace-links.css', v='2') }}">
+</head>
+<body{% if show_cart_drawer %} class="cart-drawer-open"{% endif %}>
+    {% block body %}{% endblock %}
+    <div id="cart-drawer" class="cart-drawer-shell {% if show_cart_drawer %}open{% elif cart_drawer_peek %}peek{% endif %}">
+        <a class="cart-overlay" href="{{ cart_state_url(None) }}"></a>
+        <aside class="cart-drawer">
+            {% if show_cart_drawer %}
+                <a class="cart-drawer-toggle" href="{{ cart_state_url('peek') }}" aria-label="Hide cart">›</a>
+            {% elif cart_drawer_peek %}
+                <a class="cart-drawer-toggle" href="{{ cart_state_url('open') }}" aria-label="Open cart">‹</a>
+            {% endif %}
+            <header>
+                <div>
+                    <strong>Shopping Cart</strong>
+                    <span>{{ cart_count }} item{% if cart_count != 1 %}s{% endif %}</span>
+                </div>
+                <a href="{{ cart_state_url(None) }}" aria-label="Close cart">x</a>
+            </header>
+            <div class="drawer-items">
+                {% for item in cart_items %}
+                    <article class="drawer-item">
+                        <form method="post" action="{{ url_for('remove_from_cart', product_id=item.id) }}">
+                            <input type="hidden" name="next" value="{{ cart_state_url('open') }}">
+                            <button type="submit" aria-label="Delete {{ item.name }}" title="Delete item">
+                                <svg class="remove-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                                    <path d="M3 6h18"></path>
+                                    <path d="M8 6V4h8v2"></path>
+                                    <path d="M6 6l1 15h10l1-15"></path>
+                                    <path d="M10 11v6"></path>
+                                    <path d="M14 11v6"></path>
+                                </svg>
+                                <span aria-hidden="true">⌫</span>
+                            </button>
+                        </form>
+                        <a href="{{ url_for('product_details', product_id=item.id) }}">
+                            <img src="{{ item.image|legacy_asset }}" alt="{{ item.name }}">
+                        </a>
+                        <div>
+                            <h3><a href="{{ url_for('product_details', product_id=item.id) }}">{{ item.name }}</a></h3>
+                            <span>{{ item.quantity }} x Tk {{ item.price }}</span>
+                        </div>
+                    </article>
+                {% else %}
+                    <div class="drawer-empty">
+                        <strong>Your cart is empty</strong>
+                        <span>Add products to see them here.</span>
+                    </div>
+                {% endfor %}
+            </div>
+            <footer>
+                <div><span>Total</span><strong>Tk {{ "%.2f"|format(cart_total) }}</strong></div>
+                <a class="drawer-cart-link" href="{{ url_for('cart') }}">View Full Cart</a>
+            </footer>
+        </aside>
+    </div>
+    <div class="chatbot-widget" id="chatbot-widget">
+        <button class="chatbot-fab" id="chatbot-toggle" type="button" aria-label="Open chat bot">
+            <span class="chatbot-fab-icon" aria-hidden="true"></span>
+            <span>Chat</span>
+        </button>
+        <section class="chatbot-panel" id="chatbot-panel" aria-label="bdallmart.com chat bot">
+            <header>
+                <div>
+                    <strong>bdallmart.com Bot</strong>
+                    <span>Ask products, services, courses or jobs</span>
+                </div>
+                <div class="chatbot-header-actions">
+                    <button type="button" id="chatbot-clear" aria-label="Clear chat bot">Clear</button>
+                    <button type="button" id="chatbot-close" aria-label="Close chat bot">x</button>
+                </div>
+            </header>
+            <div class="chatbot-messages" id="chatbot-messages">
+                <div class="chatbot-message bot">
+                    Hello! How can we help you today? Product, order, payment, return/refund, technical support ba agent-er jonno message korun.
+                </div>
+            </div>
+            <div class="chatbot-service-box">
+                <button type="button" id="chatbot-service-toggle">Customer Service Representative</button>
+                <form id="chatbot-service-form">
+                    <select name="issue_type" required>
+                        <option value="">Select issue type</option>
+                        <option value="Product information">Product information</option>
+                        <option value="Order status">Order status</option>
+                        <option value="Payment issue">Payment issue</option>
+                        <option value="Return/refund">Return/refund</option>
+                        <option value="Technical support">Technical support</option>
+                        <option value="Talk to agent">Talk to agent</option>
+                    </select>
+                    <input name="name" type="text" placeholder="Your name" value="{{ session.get('username') or '' }}">
+                    <input name="contact_no" type="text" placeholder="Contact no" value="{{ session.get('phone') or '' }}" required>
+                    <input name="email" type="email" placeholder="Email address">
+                    <input name="order_id" type="text" placeholder="Order ID, if any">
+                    <textarea name="address" rows="2" placeholder="Address" required></textarea>
+                    <input name="attachment_url" type="text" placeholder="Screenshot/file link or note">
+                    <textarea name="question" rows="2" placeholder="Problem details" required></textarea>
+                    <button type="submit">Request Support</button>
+                </form>
+                <div class="chatbot-support-thread" id="chatbot-support-thread">
+                    <div>
+                        <strong id="chatbot-support-title">Support request</strong>
+                        <button type="button" id="chatbot-support-refresh">Refresh</button>
+                    </div>
+                    <form id="chatbot-support-message-form">
+                        <textarea name="message" rows="2" placeholder="Write another message..." required></textarea>
+                        <button type="submit">Send to representative</button>
+                    </form>
+                    <form id="chatbot-feedback-form">
+                        <strong>Rate this support</strong>
+                        <select name="rating" required>
+                            <option value="">Rating</option>
+                            <option value="5">5 - Excellent</option>
+                            <option value="4">4 - Good</option>
+                            <option value="3">3 - Average</option>
+                            <option value="2">2 - Poor</option>
+                            <option value="1">1 - Bad</option>
+                        </select>
+                        <textarea name="comment" rows="2" placeholder="Feedback comment"></textarea>
+                        <button type="submit">Send Feedback</button>
+                    </form>
+                </div>
+            </div>
+            <form class="chatbot-form" id="chatbot-form">
+                <input id="chatbot-input" name="question" type="text" placeholder="Type your question..." autocomplete="off">
+                <button type="submit">Send</button>
+            </form>
+        </section>
+    </div>
+    <script>
+        (function () {
+            const widget = document.getElementById("chatbot-widget");
+            const toggle = document.getElementById("chatbot-toggle");
+            const close = document.getElementById("chatbot-close");
+            const clear = document.getElementById("chatbot-clear");
+            const form = document.getElementById("chatbot-form");
+            const serviceToggle = document.getElementById("chatbot-service-toggle");
+            const serviceForm = document.getElementById("chatbot-service-form");
+            const supportThread = document.getElementById("chatbot-support-thread");
+            const supportTitle = document.getElementById("chatbot-support-title");
+            const supportRefresh = document.getElementById("chatbot-support-refresh");
+            const supportMessageForm = document.getElementById("chatbot-support-message-form");
+            const feedbackForm = document.getElementById("chatbot-feedback-form");
+            const input = document.getElementById("chatbot-input");
+            const messages = document.getElementById("chatbot-messages");
+            const welcomeMessage = "Hello! How can we help you today? Product, order, payment, return/refund, technical support ba agent-er jonno message korun.";
+            const supportStorageKey = "bdallmart_support_request_id";
+
+            function addMessage(text, type) {
+                const item = document.createElement("div");
+                item.className = "chatbot-message " + type;
+                item.textContent = text;
+                messages.appendChild(item);
+                messages.scrollTop = messages.scrollHeight;
+                return item;
+            }
+
+            function addResults(results) {
+                if (!results || !results.length) return;
+                const wrap = document.createElement("div");
+                wrap.className = "chatbot-results";
+                results.slice(0, 10).forEach(function (result) {
+                    const link = document.createElement("a");
+                    link.href = result.url || "#";
+                    link.className = "chatbot-result";
+                    const image = document.createElement("img");
+                    image.src = normalizeAssetUrl(result.image);
+                    image.alt = result.title || "Result";
+                    image.loading = "lazy";
+                    image.onerror = function () {
+                        image.src = "{{ url_for('static', filename='ProductImage/download.jpg') }}";
+                    };
+                    link.appendChild(image);
+                    const body = document.createElement("span");
+                    const title = document.createElement("strong");
+                    title.textContent = result.title || "Result";
+                    const meta = document.createElement("small");
+                    meta.textContent = result.meta || result.type || "";
+                    body.appendChild(title);
+                    body.appendChild(meta);
+                    link.appendChild(body);
+                    wrap.appendChild(link);
+                });
+                messages.appendChild(wrap);
+                messages.scrollTop = messages.scrollHeight;
+            }
+
+            function normalizeAssetUrl(path) {
+                if (!path) return "{{ url_for('static', filename='ProductImage/download.jpg') }}";
+                if (/^https?:\/\//i.test(path) || path.charAt(0) === "/") return path;
+                return "{{ url_for('static', filename='') }}" + path.replace(/^\/+/, "").split("/").map(encodeURIComponent).join("/");
+            }
+
+            async function readJsonResponse(response) {
+                const text = await response.text();
+                try {
+                    return JSON.parse(text || "{}");
+                } catch (error) {
+                    return {
+                        ok: false,
+                        message: text || "Server returned an invalid response."
+                    };
+                }
+            }
+
+            if (form && input && messages) {
+                form.addEventListener("submit", async function (event) {
+                    event.preventDefault();
+                    const question = input.value.trim();
+                    if (!question) return;
+                    addMessage(question, "user");
+                    input.value = "";
+                    const loading = addMessage("Searching database...", "bot muted");
+                    try {
+                        const response = await fetch("{{ url_for('rag_chat_api') }}", {
+                            method: "POST",
+                            headers: {"Content-Type": "application/json"},
+                            body: JSON.stringify({question: question})
+                        });
+                        const data = await readJsonResponse(response);
+                        loading.textContent = data.answer || data.message || "No answer found.";
+                        loading.className = "chatbot-message bot";
+                        addResults(data.results || []);
+                    } catch (error) {
+                        loading.textContent = "Server connection problem. Please try again.";
+                        loading.className = "chatbot-message bot";
+                    }
+                });
+            }
+
+            function supportThreadUrl(requestId) {
+                return "{{ url_for('support_chat_thread_api', request_id=0) }}".replace("/0", "/" + requestId);
+            }
+
+            function supportMessageUrl(requestId) {
+                return "{{ url_for('support_chat_message_api', request_id=0) }}".replace("/0/message", "/" + requestId + "/message");
+            }
+
+            function supportFeedbackUrl(requestId) {
+                return "{{ url_for('support_chat_feedback_api', request_id=0) }}".replace("/0/feedback", "/" + requestId + "/feedback");
+            }
+
+            function renderSupportMessages(data) {
+                if (!data || !data.ok) return;
+                if (!supportThread || !supportTitle) return;
+                supportThread.classList.add("open");
+                if (data.request) {
+                    supportTitle.textContent = "Ticket #" + data.request.Id + " - " + (data.request.IssueType || "Support") + " - " + data.request.Status;
+                    const canFeedback = ["Resolved", "Closed"].indexOf(data.request.Status) >= 0 && !data.request.FeedbackRating;
+                    if (feedbackForm) feedbackForm.classList.toggle("open", canFeedback);
+                }
+                messages.querySelectorAll(".support-live-message").forEach(function (item) {
+                    item.remove();
+                });
+                (data.messages || []).slice(-8).forEach(function (message) {
+                    const item = addMessage((message.SenderName || message.SenderType) + ": " + message.Message, message.SenderType === "Representative" ? "bot support-live-message" : "user support-live-message");
+                    item.dataset.supportMessage = message.Id;
+                });
+            }
+
+            async function loadSupportThread() {
+                const requestId = localStorage.getItem(supportStorageKey);
+                if (!requestId || !supportThread) return;
+                try {
+                    const response = await fetch(supportThreadUrl(requestId));
+                    const data = await readJsonResponse(response);
+                    if (data.ok) {
+                        renderSupportMessages(data);
+                    }
+                } catch (error) {
+                    supportThread.classList.remove("open");
+                }
+            }
+
+            if (toggle && widget) toggle.addEventListener("click", function () {
+                widget.classList.toggle("open");
+                if (widget.classList.contains("open") && input) input.focus();
+            });
+
+            if (close && widget) close.addEventListener("click", function () {
+                widget.classList.remove("open");
+            });
+
+            if (clear && messages) clear.addEventListener("click", function () {
+                messages.innerHTML = "";
+                addMessage(welcomeMessage, "bot");
+                localStorage.removeItem(supportStorageKey);
+                if (supportThread) supportThread.classList.remove("open");
+                if (serviceForm) serviceForm.classList.remove("open");
+                if (input) input.focus();
+            });
+
+            if (serviceToggle && serviceForm && supportThread) serviceToggle.addEventListener("click", function () {
+                const requestId = localStorage.getItem(supportStorageKey);
+                if (requestId) {
+                    serviceForm.classList.remove("open");
+                    supportThread.classList.toggle("open");
+                    if (supportThread.classList.contains("open")) {
+                        loadSupportThread();
+                    }
+                } else {
+                    supportThread.classList.remove("open");
+                    serviceForm.classList.toggle("open");
+                }
+            });
+
+            if (serviceForm) serviceForm.addEventListener("submit", async function (event) {
+                event.preventDefault();
+                const formData = new FormData(serviceForm);
+                const payload = {};
+                formData.forEach(function (value, key) {
+                    payload[key] = String(value || "").trim();
+                });
+                const loading = addMessage("Sending customer service request...", "bot muted");
+                try {
+                    const response = await fetch("{{ url_for('support_chat_request_api') }}", {
+                        method: "POST",
+                        headers: {"Content-Type": "application/json"},
+                        body: JSON.stringify(payload)
+                    });
+                    const data = await readJsonResponse(response);
+                    loading.textContent = data.message || "Request submitted.";
+                    loading.className = "chatbot-message bot";
+                    if (data.ok) {
+                        localStorage.setItem(supportStorageKey, data.request_id);
+                        serviceForm.classList.remove("open");
+                        serviceForm.reset();
+                        loadSupportThread();
+                    }
+                } catch (error) {
+                    loading.textContent = "Support request failed. Please try again.";
+                    loading.className = "chatbot-message bot";
+                }
+            });
+
+            if (supportRefresh) supportRefresh.addEventListener("click", function () {
+                loadSupportThread();
+            });
+
+            if (supportMessageForm) supportMessageForm.addEventListener("submit", async function (event) {
+                event.preventDefault();
+                const requestId = localStorage.getItem(supportStorageKey);
+                const message = supportMessageForm.message.value.trim();
+                if (!requestId || !message) return;
+                const loading = addMessage(message, "user support-live-message");
+                supportMessageForm.message.value = "";
+                try {
+                    const response = await fetch(supportMessageUrl(requestId), {
+                        method: "POST",
+                        headers: {"Content-Type": "application/json"},
+                        body: JSON.stringify({message: message})
+                    });
+                    const data = await readJsonResponse(response);
+                    if (data.ok) {
+                        renderSupportMessages(data);
+                    } else {
+                        loading.textContent = data.message || "Message send failed.";
+                        loading.className = "chatbot-message bot";
+                    }
+                } catch (error) {
+                    loading.textContent = "Support message failed. Please try again.";
+                    loading.className = "chatbot-message bot";
+                }
+            });
+
+            if (feedbackForm) feedbackForm.addEventListener("submit", async function (event) {
+                event.preventDefault();
+                const requestId = localStorage.getItem(supportStorageKey);
+                if (!requestId) return;
+                const formData = new FormData(feedbackForm);
+                const payload = {};
+                formData.forEach(function (value, key) {
+                    payload[key] = String(value || "").trim();
+                });
+                const loading = addMessage("Sending feedback...", "bot muted");
+                try {
+                    const response = await fetch(supportFeedbackUrl(requestId), {
+                        method: "POST",
+                        headers: {"Content-Type": "application/json"},
+                        body: JSON.stringify(payload)
+                    });
+                    const data = await readJsonResponse(response);
+                    loading.textContent = data.message || "Feedback saved.";
+                    loading.className = "chatbot-message bot";
+                    if (data.ok) {
+                        feedbackForm.classList.remove("open");
+                        feedbackForm.reset();
+                        renderSupportMessages(data);
+                    }
+                } catch (error) {
+                    loading.textContent = "Feedback failed. Please try again.";
+                    loading.className = "chatbot-message bot";
+                }
+            });
+
+        })();
+    </script>
+</body>
+</html>

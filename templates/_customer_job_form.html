@@ -1,0 +1,93 @@
+<form class="{{ 'form-grid' if workspace_job_form else 'course-form panel-card' }}" method="post" action="{{ job_post_action|default('',true) }}" enctype="multipart/form-data">
+                    {% if not workspace_job_form %}<h2>{% if selected_job %}Edit Design Job{% else %}Post Design Job{% endif %}</h2>{% endif %}
+                    <input type="hidden" name="csrf_token" value="{{ portal_csrf() }}">
+                    <input type="hidden" name="job_id" value="{{ selected_job.Jobid if selected_job else '' }}">
+                    <label>
+                        Title
+                        <input type="text" name="title" value="{{ (selected_job.Title if selected_job else '')|decode_html }}" placeholder="Logo design for new shop" required>
+                    </label>
+                    <label>
+                        Type
+                        <select name="type">
+                            {% for item in design_types %}
+                                <option value="{{ item }}" {% if selected_job and selected_job.Type == item %}selected{% endif %}>{{ item }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    <label>
+                        Deadline
+                        <input type="date" name="deadline" {% if workspace_job_form %}min="{{ minimum_deadline }}"{% endif %} value="{{ (selected_job.Deadline|string)[:10] if selected_job and selected_job.Deadline else '' }}" required>
+                    </label>
+                    <label>
+                        Price
+                        <input type="number" name="price" min="0" step="1" value="{{ selected_job.Price if selected_job else '' }}" placeholder="850">
+                    </label>
+                    <label>
+                        Title Text
+                        <input type="text" name="logo_text" value="{{ (selected_job.Logotext if selected_job else '')|decode_html }}" placeholder="Brand name or slogan">
+                    </label>
+                    <label>
+                        Preferred color
+                        <input type="text" name="color" value="{{ (selected_job.Color if selected_job else '')|decode_html }}" placeholder="Green, red, blue">
+                    </label>
+                    <label>
+                        Price fixing
+                        <select name="price_fixing">
+                            <option value="Fixed" {% if selected_job and selected_job.PriceFixing == "Fixed" %}selected{% endif %}>Fixed</option>
+                            <option value="Negotiable" {% if selected_job and selected_job.PriceFixing == "Negotiable" %}selected{% endif %}>Negotiable</option>
+                        </select>
+                    </label>
+                    <label>
+                        Job type
+                        <select name="bit_or_contest">
+                            <option value="Bit" {% if selected_job and selected_job.BitOrContest in ["Bit","Bid"] %}selected{% endif %}>Job / Bid</option>
+                            <option value="Contest" {% if selected_job and selected_job.BitOrContest == "Contest" %}selected{% endif %}>Contest</option>
+                            {% if not workspace_job_form or (selected_job and selected_job.BitOrContest=="Direct Order") %}<option value="Direct Order" {% if selected_job and selected_job.BitOrContest == "Direct Order" %}selected{% endif %}>Direct Order</option>{% endif %}
+                        </select>
+                    </label>
+                    <label>
+                        Location
+                        <input type="text" name="location" value="{{ (selected_job.Location if selected_job else '')|decode_html }}" placeholder="Online / Dhaka">
+                    </label>
+                    <label class="wide">
+                        Description
+                        {% if workspace_job_form %}<textarea name="description" rows="5" required placeholder="Describe the work, deliverables, skills and judging rules">{{ (selected_job.Description if selected_job else '')|decode_html }}</textarea>{% else %}<textarea class="rich-editor-source" id="job-description-source" name="description" rows="5">{{ (selected_job.Description if selected_job else '')|decode_html }}</textarea>
+                        <div class="rich-editor" data-target="job-description-source">
+                            <div class="rich-editor-toolbar" aria-label="Description editor tools">
+                                <button type="button" data-command="bold"><strong>B</strong></button>
+                                <button type="button" data-command="italic"><em>I</em></button>
+                                <button type="button" data-command="underline"><u>U</u></button>
+                                <button type="button" data-command="insertUnorderedList">List</button>
+                                <button type="button" data-command="insertOrderedList">1. List</button>
+                                <button type="button" data-command="createLink">Link</button>
+                                <button type="button" data-command="removeFormat">Clear</button>
+                            </div>
+                            <div class="rich-editor-canvas" contenteditable="true" data-placeholder="Describe the work requirement">{{ (selected_job.Description if selected_job else '')|decode_html|safe }}</div>
+                        </div>
+{% endif %}
+                    </label>
+                    <label class="wide">
+                        Must follow
+                        <textarea name="must_follow" rows="3" placeholder="Rules, required content, sizes">{{ (selected_job.MustFollow if selected_job else '')|decode_html }}</textarea>
+                    </label>
+                    <label class="wide">
+                        Do not add
+                        <textarea name="dont_add" rows="3" placeholder="Things designer should avoid">{{ (selected_job.DontAdd if selected_job else '')|decode_html }}</textarea>
+                    </label>
+                    <fieldset class="customer-style-picker wide">
+                        <legend>Logo Style</legend>
+                        <label><input type="checkbox" name="styles" value="fSerif" {% if selected_job and selected_job.fSerif %}checked{% endif %}> Serif</label>
+                        <label><input type="checkbox" name="styles" value="fSensSerif" {% if selected_job and selected_job.fSensSerif %}checked{% endif %}> Sans Serif</label>
+                        <label><input type="checkbox" name="styles" value="fDecorative" {% if selected_job and selected_job.fDecorative %}checked{% endif %}> Decorative</label>
+                        <label><input type="checkbox" name="styles" value="fScript" {% if selected_job and selected_job.fScript %}checked{% endif %}> Script</label>
+                        <label><input type="checkbox" name="styles" value="Wordmark" {% if selected_job and selected_job.Wordmark %}checked{% endif %}> Wordmark</label>
+                        <label><input type="checkbox" name="styles" value="Lettermark" {% if selected_job and selected_job.Lettermark %}checked{% endif %}> Lettermark</label>
+                        <label><input type="checkbox" name="styles" value="Emblem" {% if selected_job and selected_job.Emblem %}checked{% endif %}> Emblem</label>
+                        <label><input type="checkbox" name="styles" value="Pictorial" {% if selected_job and selected_job.Pictorial %}checked{% endif %}> Pictorial</label>
+                    </fieldset>
+                    <label class="wide">
+                        Sample images
+                        <input type="file" name="sample_images" multiple>
+                    </label>
+                    <button type="submit">{% if selected_job %}Update Job{% else %}Post Job{% endif %}</button>
+                </form>

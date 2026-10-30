@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{ title }} · bdallmart</title><link rel="icon" href="{{ url_for('static',filename='favicon.ico') }}">
+{% block module_styles %}{% endblock %}
+<link rel="stylesheet" href="{{ url_for('static',filename='market.css',v='4') }}">
+<script defer src="{{ url_for('static',filename='market.js',v='3') }}"></script></head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="m-top"><a class="m-brand" href="{{ url_for('dashboard',workspace=1) if portal_user else url_for('login') }}"><img src="{{ url_for('static',filename='bdallmartLogo.png') }}" alt="bdallmart"><span>bdallmart<small>Your all-in-one workspace</small></span></a>
+<form class="m-search" action="{{ url_for('market.catalog') }}"><label class="sr-only" for="global-search">Search</label><input id="global-search" name="q" placeholder="Search products, software, services and courses"><button>Search</button></form>
+<div class="m-top-links"><a href="{{ url_for('login') }}">Marketplace</a>{% if portal_user %}<a href="{{ url_for('dashboard',workspace=1) }}">My Dashboard</a><a href="{{ url_for('market.settings') }}">{{ session.get('username') }}</a><a href="{{ url_for('logout') }}">Logout</a>{% else %}<a class="button" href="{{ url_for('login',next=request.path) }}">Login</a>{% endif %}</div></header>
+<div class="m-shell"><aside class="m-sidebar"><details open><summary>Menu <span>☰</span></summary><nav aria-label="Main navigation">
+<a href="{{ url_for('dashboard',workspace=1) }}">My Dashboard</a>
+{% set navigation = [('Workspace',[('home','Workspace Overview','market.home'),('catalog','Browse Marketplace','market.catalog')]),('Buying & Selling',[('orders','Orders & Contracts','market.orders'),('listings','My Store','market.listings'),('earnings','Earnings & Withdrawals','market.earnings')]),('Work & Learning',[('jobs','Jobs, Bids & Contests','market.jobs'),('learning','My Learning','market.learning'),('teaching','Course Management','market.teaching')]),('Account',[('settings','Profile & Features','market.settings')])] %}
+{% for group,links in navigation %}<p class="nav-caption">{{ group }}</p>{% for key,label,endpoint in links %}<a class="{{ 'selected' if section==key and not workspace_mode else '' }}" {% if section==key and not workspace_mode %}aria-current="page"{% endif %} href="{{ url_for(endpoint) }}"><span class="nav-dot"></span>{{ label }}</a>{% endfor %}{% endfor %}
+{% if market_admin %}<p class="nav-caption">Administration</p><a class="{{ 'selected' if section=='admin' else '' }}" href="{{ url_for('market.admin') }}">Platform Management</a><a href="{{ url_for('market.admin_users') }}">Users & Permissions</a><a href="{{ url_for('admin_dashboard') }}">Admin Dashboard</a><a href="{{ url_for('pos_sale') }}">POS Sale</a><a href="{{ url_for('pos_sales_reports') }}">POS Reports</a>{% endif %}
+<p class="nav-caption">Existing Modules</p><a href="{{ url_for('customer_workspace',section='orders',workspace=1) }}">Customer Dashboard</a><a href="{{ url_for('designer_workspace',section='dashboard',workspace=1) }}">Freelancer Dashboard</a><a href="{{ url_for('my_courses') }}">My Courses</a><a href="{{ url_for('ask_chat') }}">Help & Support</a>
+{% if workspace_mode and menu %}<p class="nav-caption">{{ role }} Modules</p>{% for label,href in menu %}<a class="{{ 'selected' if request.path==href.split('?')[0] else '' }}" href="{{ workspace_module_url(href) }}">{{ label }}</a>{% endfor %}{% endif %}
+</nav></details><div class="sidebar-tip"><b>Getting started</b><p>Complete your profile, then buy, sell or find work.</p></div></aside>
+<main id="main" class="m-main"><div class="m-breadcrumb">Workspace <span>/</span> {{ title }}</div>
+{% with messages=get_flashed_messages(with_categories=true) %}{% for category,message in messages %}<div class="notice {{ category }}" role="status">{{ message }}</div>{% endfor %}{% endwith %}
+{% block content %}{% endblock %}<footer class="m-footer">bdallmart · Shop, work and learn <a href="{{ url_for('ask_chat') }}">Help & Support →</a></footer></main></div></body></html>

@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+{% block body %}
+<header class="store-top checkout-store-top">
+    <div class="store-bar">
+        <a href="{{ url_for('login') }}">Home</a>
+        <a href="{{ url_for('register') }}">Register</a>
+        <a href="{{ url_for('login') }}#login-panel">Login</a>
+    </div>
+    <div class="store-header">
+        <a class="market-logo" href="{{ url_for('login') }}"><img src="{{ url_for('static', filename='bdallmartLogo.png', v='20260518-logo') }}" alt="bdallmart.com"><strong>bdallmart.com</strong></a>
+        <form class="search-box" method="get" action="{{ url_for('ask_chat') }}">
+            <input type="search" name="q" placeholder="Ask more products">
+            <button type="submit">Ask</button>
+        </form>
+        <div class="quick-actions">
+            <a href="{{ url_for('cart') }}">Cart ({{ cart_count }})</a>
+            <span>Orders</span>
+            <span>Messages</span>
+        </div>
+    </div>
+</header>
+
+<main class="checkout-page">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+            <div class="message {{ category }}">{{ message }}</div>
+        {% endfor %}
+    {% endwith %}
+
+    <section class="checkout-heading">
+        <div>
+            <span>Secure checkout</span>
+            <h1>Complete your order</h1>
+            <p>Confirm delivery information, choose a payment method, and place your order.</p>
+        </div>
+        <ol class="checkout-steps" aria-label="Checkout steps">
+            <li class="done">Cart</li>
+            <li class="active">Checkout</li>
+            <li>Confirm</li>
+        </ol>
+    </section>
+
+    <form class="checkout-form" method="post" action="{{ url_for('checkout') }}">
+        <div class="checkout-main">
+            <section class="checkout-panel">
+                <div class="panel-title">
+                    <span>1</span>
+                    <div>
+                        <h2>Delivery Information</h2>
+                        <p>Use the phone number and address where you want to receive the order.</p>
+                    </div>
+                </div>
+                <div class="checkout-fields">
+                    <label>
+                        <span>Mobile Number</span>
+                        <input id="checkout-mobile" type="tel" name="mobile" value="{{ order.mobile }}" placeholder="01XXXXXXXXX" autocomplete="tel" required>
+                        <small id="customer-lookup-status" class="lookup-status"></small>
+                    </label>
+                    <label>
+                        <span>Full Name</span>
+                        <input id="checkout-name" type="text" name="name" value="{{ order.name }}" placeholder="Customer name" autocomplete="name" required>
+                    </label>
+                    <label>
+                        <span>Email Address</span>
+                        <input id="checkout-email" type="email" name="email" value="{{ order.email }}" placeholder="name@example.com" autocomplete="email">
+                    </label>
+                    <label>
+                        <span>Affiliate User</span>
+                        <input type="text" value="{{ order.affiliate_user or 'hbanucu' }}" disabled>
+                        <input type="hidden" name="affiliate_user" value="{{ order.affiliate_user or 'hbanucu' }}">
+                    </label>
+                    <label class="wide">
+                        <span>Delivery Address</span>
+                        <textarea id="checkout-address" name="address" rows="4" placeholder="House, road, area, city" autocomplete="street-address" required>{{ order.address }}</textarea>
+                    </label>
+                </div>
+            </section>
+
+            <section class="checkout-panel">
+                <div class="panel-title">
+                    <span>2</span>
+                    <div>
+                        <h2>Payment Method</h2>
+                        <p>Select how this customer will pay for the order.</p>
+                    </div>
+                </div>
+                <div class="payment-options">
+                    <label class="payment-card">
+                        <input type="radio" name="payment_type" value="Cash On Delivery" {% if order.payment_type == "Cash On Delivery" %}checked{% endif %}>
+                        <strong>Cash On Delivery</strong>
+                        <small>Customer pays after receiving the product.</small>
+                    </label>
+                    <label class="payment-card">
+                        <input type="radio" name="payment_type" value="Mobile Payment" {% if order.payment_type == "Mobile Payment" %}checked{% endif %}>
+                        <strong>Mobile Payment</strong>
+                        <small>bKash, Nagad, Rocket or other mobile banking.</small>
+                    </label>
+                    <label class="payment-card">
+                        <input type="radio" name="payment_type" value="Card Payment" {% if order.payment_type == "Card Payment" %}checked{% endif %}>
+                        <strong>Card Payment</strong>
+                        <small>Card gateway can be connected later.</small>
+                    </label>
+                </div>
+                <label class="payment-method mobile-payment-method" id="mobile-payment-method">
+                    <span>Mobile payment provider</span>
+                    <select name="payment_method">
+                        <option {% if order.payment_method == "bKash" %}selected{% endif %}>bKash</option>
+                        <option {% if order.payment_method == "Nagad" %}selected{% endif %}>Nagad</option>
+                        <option {% if order.payment_method == "Rocket" %}selected{% endif %}>Rocket</option>
+                        <option {% if order.payment_method == "Cash On Delivery" %}selected{% endif %}>Cash On Delivery</option>
+                    </select>
+                </label>
+                <div class="payment-note">
+                    <strong>bKash merchant: 01677802233</strong>
+                    <span>After payment, keep the transaction ID. This order will be saved and confirmation SMS will be queued.</span>
+                </div>
+            </section>
+        </div>
+
+        <aside class="checkout-summary">
+            <h2>Order Summary</h2>
+            <div class="summary-items">
+                {% for item in items %}
+                    <article>
+                        <img src="{{ item.image|legacy_asset }}" alt="{{ item.name }}">
+                        <div>
+                            <strong>{{ item.name }}</strong>
+                            <span>{{ item.quantity }} x Tk {{ item.price }}</span>
+                        </div>
+                        <b>Tk {{ "%.2f"|format(item.price|float * item.quantity|int) }}</b>
+                    </article>
+                {% endfor %}
+            </div>
+            <div class="summary-lines">
+                <div><span>Items</span><strong>{{ cart_count }}</strong></div>
+                <div><span>Subtotal</span><strong>Tk {{ "%.2f"|format(total) }}</strong></div>
+                <div><span>Delivery</span><strong>To be confirmed</strong></div>
+                <div class="grand-total"><span>Total</span><strong>Tk {{ "%.2f"|format(total) }}</strong></div>
+            </div>
+            <button class="confirm-order-btn" type="submit">Place Order</button>
+            <a class="back-to-cart" href="{{ url_for('cart') }}">Back to cart</a>
+        </aside>
+    </form>
+</main>
+<script>
+    const mobileInput = document.getElementById("checkout-mobile");
+    const nameInput = document.getElementById("checkout-name");
+    const emailInput = document.getElementById("checkout-email");
+    const addressInput = document.getElementById("checkout-address");
+    const lookupStatus = document.getElementById("customer-lookup-status");
+    const mobilePaymentBox = document.getElementById("mobile-payment-method");
+    const paymentNote = document.querySelector(".payment-note");
+    const paymentInputs = document.querySelectorAll("input[name='payment_type']");
+
+    function toggleMobilePayment() {
+        const selected = document.querySelector("input[name='payment_type']:checked");
+        const isMobile = selected && selected.value === "Mobile Payment";
+        mobilePaymentBox.hidden = !isMobile;
+        paymentNote.hidden = !isMobile;
+    }
+
+    async function lookupCustomer() {
+        const mobile = mobileInput.value.trim();
+        if (mobile.length < 6) {
+            lookupStatus.textContent = "";
+            return;
+        }
+
+        lookupStatus.textContent = "Checking customer...";
+        try {
+            const response = await fetch(`/api/customer-lookup?mobile=${encodeURIComponent(mobile)}`);
+            const customer = await response.json();
+            if (customer.found) {
+                nameInput.value = customer.name || "";
+                emailInput.value = customer.email || "";
+                addressInput.value = customer.address || "";
+                lookupStatus.textContent = "Existing customer found. Information loaded.";
+                lookupStatus.className = "lookup-status found";
+            } else {
+                lookupStatus.textContent = "New customer. Information will be saved with this order.";
+                lookupStatus.className = "lookup-status new";
+            }
+        } catch (error) {
+            lookupStatus.textContent = "Customer lookup failed. You can still place the order.";
+            lookupStatus.className = "lookup-status error";
+        }
+    }
+
+    mobileInput.addEventListener("blur", lookupCustomer);
+    paymentInputs.forEach((input) => input.addEventListener("change", toggleMobilePayment));
+    toggleMobilePayment();
+</script>
+{% endblock %}

@@ -1,0 +1,103 @@
+{% extends "market/module_layout.html" if workspace_mode else "base.html" %}
+{% block body %}
+{% set list_endpoint = tracking_list_endpoint|default("customer_order_tracking", true) %}
+<main class="{{ 'workspace-module-body' if workspace_mode else 'dashboard' }}">
+    {% if not workspace_mode %}<aside class="sidebar">
+        <a class="brand" href="{{ url_for('dashboard') }}"><img src="{{ url_for('static', filename='bdallmartLogo.png', v='20260518-logo') }}" alt="bdallmart.com"> bdallmart.com</a>
+        <div class="sidebar-user">
+            <strong>{{ session.get("username") }}</strong>
+            <span>{{ role }}</span>
+        </div>
+        <nav>
+            {% for label, href in menu %}
+                <a class="{% if href == url_for(list_endpoint) %}active{% endif %}" href="{{ href }}">{{ label }}</a>
+            {% endfor %}
+            {% include '_workspace_menu.html' %}
+        </nav>
+        <a class="sidebar-logout" href="{{ url_for('logout') }}">Logout</a>
+    </aside>{% endif %}
+
+    <section class="{{ 'workspace-module-content' if workspace_mode else 'content' }} order-detail-page">
+        <header class="dashboard-topbar">
+            <div>
+                <span>{{ accent }}</span>
+                <h1>View Order : #{{ order.order_id }}</h1>
+                <p><a class="tracking-back-link" href="{{ url_for(list_endpoint) }}">Back to Orders</a></p>
+            </div>
+            <div class="dashboard-top-actions">
+                <a class="workspace-entry" href="{{ url_for('market.home') }}">New Features ↗</a>
+                <a href="{{ url_for('login') }}">Marketplace</a>
+            </div>
+        </header>
+
+        <section class="tracking-detail-card">
+            <h2>Timeline</h2>
+            <div class="tracking-timeline">
+                {% for item in order.timeline %}
+                    <article class="{% if item.done %}done{% endif %}">
+                        <time>{{ item.date or order.date }}</time>
+                        <div>
+                            <strong>{{ item.title }}</strong>
+                            <p>{{ item.text }}</p>
+                        </div>
+                    </article>
+                {% endfor %}
+            </div>
+        </section>
+
+        {% if order.delivery %}
+            <section class="tracking-detail-card tracking-delivery-card">
+                <div>
+                    <span>Delivered By</span>
+                    <strong>{{ order.delivery.DeliveryManName }}</strong>
+                    <p>How was the delivery?</p>
+                </div>
+                <button type="button">Rate Now</button>
+            </section>
+        {% endif %}
+
+        <section class="tracking-detail-card">
+            <div class="tracking-products">
+                {% for item in order["items"] %}
+                    <article>
+                        <img src="{{ item.ImagePath|legacy_asset }}" alt="{{ item.Pname }}">
+                        <div>
+                            <strong>{{ item.Pname }}</strong>
+                            <span>{{ item.Barcode }}</span>
+                            <small>Seller: {{ item.MainItemSellerName or "bdallmart.com" }}</small>
+                        </div>
+                        <div class="tracking-product-price">
+                            <strong>Tk {{ "%.2f"|format(item.Price or 0) }}</strong>
+                            <span>Quantity: {{ item.Quantity }}</span>
+                            <b>{{ item.Status or order.status }}</b>
+                        </div>
+                    </article>
+                {% endfor %}
+            </div>
+            <button class="tracking-reorder-btn" type="button">Create order with these items</button>
+        </section>
+
+        <section class="tracking-detail-card">
+            <h2>Shipping Address</h2>
+            <div class="tracking-address">
+                <span class="tracking-bag-icon">□</span>
+                <div>
+                    <strong>{{ order.customer_name }}</strong>
+                    <span>{{ order.customer_mobile }}</span>
+                    <p>{{ order.customer_address or "Address not found" }}</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="tracking-detail-card tracking-payment">
+            <h2>Payment Details</h2>
+            <div><span>Order ID</span><strong>#{{ order.order_id }}</strong></div>
+            <div><span>Order At</span><strong>{{ order.date }}</strong></div>
+            <div><span>Subtotal</span><strong>Tk {{ "%.2f"|format(order.subtotal or 0) }}</strong></div>
+            <div><span>Total Items</span><strong>{{ order.total_qty }}</strong></div>
+            <div class="payable"><span>Amount Payable</span><strong>Tk {{ "%.2f"|format(order.subtotal or 0) }}</strong></div>
+            <button type="button">Download Invoice</button>
+        </section>
+    </section>
+</main>
+{% endblock %}

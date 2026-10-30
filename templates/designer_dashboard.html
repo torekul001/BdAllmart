@@ -1,0 +1,688 @@
+{% extends "market/module_layout.html" if workspace_mode else "base.html" %}
+{% block body %}
+<main class="{{ 'workspace-module-body' if workspace_mode else 'dashboard' }}">
+    {% if not workspace_mode %}<aside class="sidebar">
+        <a class="brand" href="{{ url_for('dashboard') }}"><img src="{{ url_for('static', filename='bdallmartLogo.png', v='20260518-logo') }}" alt="bdallmart.com"> bdallmart.com</a>
+        <div class="sidebar-user">
+            <strong>{{ session.get("username") }}</strong>
+            <span>{{ role }}</span>
+        </div>
+        <nav>
+            {% for label, href in menu %}
+                <a class="{% if request.path == href %}active{% endif %}" href="{{ href }}">{{ label }}</a>
+            {% endfor %}
+            {% include '_workspace_menu.html' %}
+        </nav>
+        <a class="sidebar-logout" href="{{ url_for('logout') }}">Logout</a>
+    </aside>{% endif %}
+
+    <section class="{{ 'workspace-module-content' if workspace_mode else 'content' }}">
+        <header class="dashboard-topbar">
+            <div>
+                <span>{{ accent }}</span>
+                <h1>{{ title }}</h1>
+            </div>
+            <div class="dashboard-top-actions">
+                <a class="workspace-entry" href="{{ url_for('market.home') }}">New Features ↗</a>
+                <a href="{{ url_for('designer_workspace', section='profile') }}">Edit Profile</a>
+                <a href="{{ url_for('designer_workspace', section='submit') }}">Submit Work</a>
+                <a href="{{ url_for('login') }}">Marketplace</a>
+            </div>
+        </header>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-stack">
+                    {% for category, message in messages %}
+                        <div class="message {{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% if section == "dashboard" %}
+            {% set profile_status = ((profile or {}).get("Status") or "Active")|string|trim|lower %}
+            {% set clean_status = "Active" if profile_status == "true" or profile_status == "active" else ("Inactive" if profile_status == "false" or profile_status == "inactive" else ((profile or {}).get("Status") or "Active")) %}
+            <section class="designer-overview">
+                <div class="designer-profile-card">
+                    <div class="offer-designer-photo">
+                        {% set designer_picture = profile|user_picture %}
+                        {% if designer_picture %}
+                            <img src="{{ designer_picture }}" alt="{{ session.get('username') }}">
+                        {% else %}
+                            <span>{{ (session.get("username") or "AS")[:2]|upper }}</span>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <span class="dashboard-eyebrow">Designer profile</span>
+                        <h2>{{ (profile or {}).get("FirstName") or session.get("username") }}</h2>
+                        <p>{{ (profile or {}).get("AboutMe") or "Ready to accept design, service, and marketplace work." }}</p>
+                    </div>
+                    <dl>
+                        <div><dt>Account</dt><dd>{{ session.get("username") }}</dd></div>
+                        <div><dt>Phone</dt><dd>{{ session.get("phone") or (profile or {}).get("Phone") or "Not added" }}</dd></div>
+                        <div><dt>Team</dt><dd>{{ (profile or {}).get("Team") or "Not assigned" }}</dd></div>
+                        <div><dt>Status</dt><dd>{{ clean_status }}</dd></div>
+                    </dl>
+                </div>
+                <div class="designer-kpi-board">
+                    <article class="seller-kpi red"><span>Rank</span><strong>#{{ (profile or {}).get("Lavel") or "5" }}</strong><small>Profile level</small></article>
+                    <article class="seller-kpi blue"><span>Positive</span><strong>{{ (profile or {}).get("Reting") or "95" }}%</strong><small>Rating score</small></article>
+                    <article class="seller-kpi slate"><span>Open Jobs</span><strong>{{ summary.open_jobs if summary else stats[0][0] }}</strong><small>Available now</small></article>
+                    <article class="seller-kpi teal"><span>Services</span><strong>{{ summary.offers if summary else stats[1][0] }}</strong><small>Active packages</small></article>
+                    <article class="seller-kpi gold"><span>Earnings</span><strong>{{ summary.earnings if summary else stats[3][0] }}</strong><small>Selected jobs</small></article>
+                </div>
+            </section>
+
+            <section class="designer-insight-grid">
+                <article><span>Submissions</span><strong>{{ summary.submissions if summary else stats[2][0] }}</strong><small>Total design entries submitted.</small></article>
+                <article><span>Selected Designs</span><strong>{{ summary.selected if summary else selected_submissions|length }}</strong><small>Approved or selected by client/admin.</small></article>
+                <article><span>Service Orders</span><strong>{{ summary.orders if summary else orders|length }}</strong><small>Orders from your service packages.</small></article>
+                <article><span>Messages</span><strong>{{ messages|length }}</strong><small>Client and job conversation count.</small></article>
+            </section>
+
+            <section class="designer-chart-grid">
+                <article class="panel-card designer-chart-card">
+                    <div class="panel-heading"><div><h2>Open Job Categories</h2><p>Which work types are available right now.</p></div></div>
+                    {% set max_jobs = namespace(value=0) %}
+                    {% for item in job_types %}{% if (item.Total|int) > max_jobs.value %}{% set max_jobs.value = item.Total|int %}{% endif %}{% endfor %}
+                    <div class="designer-bar-chart">
+                        {% for item in job_types %}
+                            <div class="designer-bar-row"><span>{{ item.Type }}</span><div><i style="width: {{ ((item.Total|int) * 100 / (max_jobs.value or 1))|round(0, 'floor') }}%"></i></div><strong>{{ item.Total }}</strong></div>
+                        {% else %}
+                            <div class="empty-state"><strong>No chart data</strong><span>Open job thakle category chart show korbe.</span></div>
+                        {% endfor %}
+                    </div>
+                </article>
+
+                <article class="panel-card designer-chart-card">
+                    <div class="panel-heading"><div><h2>Work Mix</h2><p>Submissions, services, selected work, and orders.</p></div></div>
+                    {% set submission_count = (summary.submissions if summary else 0)|int %}
+                    {% set service_count = (summary.offers if summary else 0)|int %}
+                    {% set selected_count = (summary.selected if summary else 0)|int %}
+                    {% set order_count = (summary.orders if summary else 0)|int %}
+                    {% set chart_total = submission_count + service_count + selected_count + order_count %}
+                    {% set safe_total = chart_total if chart_total > 0 else 1 %}
+                    {% set submission_deg = submission_count * 360 / safe_total %}
+                    {% set service_deg = submission_deg + (service_count * 360 / safe_total) %}
+                    {% set selected_deg = service_deg + (selected_count * 360 / safe_total) %}
+                    <div class="designer-donut-wrap">
+                        <div class="designer-donut" style="background: conic-gradient(#078c2f 0 {{ submission_deg }}deg, #1d72c8 {{ submission_deg }}deg {{ service_deg }}deg, #f59e0b {{ service_deg }}deg {{ selected_deg }}deg, #ef4444 {{ selected_deg }}deg 360deg);"><span>{{ chart_total }}</span><small>Total</small></div>
+                        <div class="designer-chart-legend">
+                            <span><i class="green"></i>Submissions <strong>{{ submission_count }}</strong></span>
+                            <span><i class="blue"></i>Services <strong>{{ service_count }}</strong></span>
+                            <span><i class="amber"></i>Selected <strong>{{ selected_count }}</strong></span>
+                            <span><i class="red"></i>Orders <strong>{{ order_count }}</strong></span>
+                        </div>
+                    </div>
+                </article>
+            </section>
+        {% endif %}
+
+        {% if section == "jobs" %}
+            <section class="designer-dashboard-layout">
+                <aside class="panel-card designer-quick-panel">
+                    <div class="panel-heading">
+                        <div>
+                            <h2>Quick Actions</h2>
+                            <p>Common work shortcuts.</p>
+                        </div>
+                    </div>
+                    <div class="designer-action-list">
+                        <a href="{{ url_for('designer_workspace', section='submit') }}">Submit Design</a>
+                        <a href="{{ url_for('designer_workspace', section='offers') }}">Create Service</a>
+                        <a href="{{ url_for('designer_workspace', section='products') }}">Add Product</a>
+                        <a href="{{ url_for('designer_order_tracking') }}">Track Orders</a>
+                    </div>
+                    <div class="designer-mini-section">
+                        <h3>Job Categories</h3>
+                        {% for item in job_types %}
+                            <div class="designer-type-row">
+                                <span>{{ item.Type }}</span>
+                                <strong>{{ item.Total }}</strong>
+                            </div>
+                        {% else %}
+                            <p>No category data found.</p>
+                        {% endfor %}
+                    </div>
+                </aside>
+                <div class="panel-card designer-wide">
+                    <div class="panel-heading">
+                        <div>
+                            <h2>Work Order List</h2>
+                            <p>Open jobs sorted by nearest deadline. Review details, then submit your work.</p>
+                        </div>
+                        <span class="designer-count-pill">{{ jobs|length }} active</span>
+                    </div>
+                    <div class="designer-job-list">
+                        {% for job in jobs %}
+                            <article class="designer-job-card">
+                                <div class="designer-job-head">
+                                    <div>
+                                        <strong>{{ job.Title or "Untitled job" }}</strong>
+                                    <span>{{ job.Type or "General" }} · Job #{{ job.Jobid }}</span>
+                                    </div>
+                                    <em class="{% if loop.index <= 3 %}urgent{% endif %}">{{ "Priority" if loop.index <= 3 else "Open" }}</em>
+                                </div>
+                                <p>{{ (job.Description or "No description added.")|decode_html|striptags|truncate(160, True) }}</p>
+                                <div class="designer-meta-row">
+                                    <span>Price: Tk {{ job.Price or 0 }}</span>
+                                    <span>Deadline: {{ job.Deadline }}</span>
+                                    {% set job_status = (job.Status or "Active")|string|trim|lower %}
+                                    <span>Status: {% if job_status == "true" or job_status == "active" %}Active{% elif job_status == "false" or job_status == "inactive" %}Inactive{% else %}{{ job.Status or "Active" }}{% endif %}</span>
+                                </div>
+                                <div class="designer-actions">
+                                    <a href="{{ url_for('market.existing_job_detail',job_id=job.Jobid) }}">View Work</a>
+                                    {% if job.Designlink %}
+                                        <span>{{ job.Designlink }}</span>
+                                    {% endif %}
+                                </div>
+                            </article>
+                        {% else %}
+                            <div class="empty-state">
+                                <strong>No active jobs found</strong>
+                                <span>JobsList-e current deadline active job nei.</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </section>
+        {% elif section == "offers" %}
+            <section class="offer-place-layout">
+                <form class="offer-form panel-card" method="post" enctype="multipart/form-data">
+                    <div class="offer-slider">
+                        {% if selected_offer_images %}
+                            <div class="offer-slides">
+                                {% for image in selected_offer_images[:3] %}
+                                    <img id="offer-slide-{{ loop.index }}" src="{{ ('OfferImages/' ~ image.image_path)|legacy_asset }}" alt="Offer image {{ loop.index }}">
+                                {% endfor %}
+                            </div>
+                            <div class="offer-dots">
+                                {% for image in selected_offer_images[:3] %}
+                                    <a href="#offer-slide-{{ loop.index }}" aria-label="Show image {{ loop.index }}"></a>
+                                {% endfor %}
+                            </div>
+                        {% elif selected_offer and selected_offer.image_path %}
+                            <div class="offer-slides">
+                                <img id="offer-slide-1" src="{{ ('OfferImages/' ~ selected_offer.image_path)|legacy_asset }}" alt="{{ selected_offer.offer_title }}">
+                            </div>
+                        {% else %}
+                            <div class="offer-slider-empty">
+                                <strong>No offer image selected</strong>
+                                <span>Upload 3 images to show them as a slider.</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="panel-heading">
+                        <div>
+                            <h2>Compare Packages</h2>
+                            <p>Create your service packages. These services will show in your public freelancer profile.</p>
+                        </div>
+                    </div>
+                    <input type="hidden" name="offer_id" value="{{ selected_offer.id if selected_offer else '' }}">
+                    <div class="offer-top-fields">
+                        <label>
+                            Offer category
+                            <select name="offer_category">
+                                {% for item in offer_categories %}
+                                    <option value="{{ item }}" {% if selected_offer and selected_offer.OfferType == item %}selected{% endif %}>{{ item }}</option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                        <label>
+                            Offer title
+                            <input type="text" name="offer_title" value="{{ selected_offer.offer_title if selected_offer else '' }}" placeholder="I will design a modern logo" required>
+                        </label>
+                    </div>
+
+                    <div class="package-table">
+                        <div class="package-row package-head">
+                            <span>Package</span>
+                            <input name="package1_name" value="{{ selected_offer.offer_type1 if selected_offer else 'Premium' }}" placeholder="Premium">
+                            <input name="package2_name" value="{{ selected_offer.offer_type2 if selected_offer else 'Standard' }}" placeholder="Standard">
+                            <input name="package3_name" value="{{ selected_offer.offer_type3 if selected_offer else 'Basic' }}" placeholder="Basic">
+                        </div>
+                        <div class="package-row">
+                            <span>Amount</span>
+                            <input name="package1_amount" value="{{ selected_offer.offer_amount1 if selected_offer else '' }}" placeholder="60">
+                            <input name="package2_amount" value="{{ selected_offer.offer_amount2 if selected_offer else '' }}" placeholder="35">
+                            <input name="package3_amount" value="{{ selected_offer.offer_amount3 if selected_offer else '' }}" placeholder="5">
+                        </div>
+                        <div class="package-row">
+                            <span>Description</span>
+                            <textarea name="package1_description">{{ selected_offer.description1 if selected_offer else '' }}</textarea>
+                            <textarea name="package2_description">{{ selected_offer.description2 if selected_offer else '' }}</textarea>
+                            <textarea name="package3_description">{{ selected_offer.description3 if selected_offer else '' }}</textarea>
+                        </div>
+                        {% for label, key in package_features %}
+                            <div class="package-row feature-row">
+                                <span>{{ label }}</span>
+                                {% for index in [1, 2, 3] %}
+                                    {% set field = key ~ index %}
+                                    <label><input type="checkbox" name="features" value="{{ field }}" {% if selected_offer and selected_offer[field] == '1' %}checked{% endif %}></label>
+                                {% endfor %}
+                            </div>
+                        {% endfor %}
+                        <div class="package-row">
+                            <span>No of Concepts</span>
+                            <input name="initial_concepts1" value="{{ selected_offer.initial_concepts1 if selected_offer else '' }}" placeholder="5">
+                            <input name="initial_concepts2" value="{{ selected_offer.initial_concepts2 if selected_offer else '' }}" placeholder="3">
+                            <input name="initial_concepts3" value="{{ selected_offer.initial_concepts3 if selected_offer else '' }}" placeholder="2">
+                        </div>
+                        <div class="package-row">
+                            <span>Revisions</span>
+                            <input name="revisions1" value="{{ selected_offer.revisions1 if selected_offer else '' }}" placeholder="Unlimited">
+                            <input name="revisions2" value="{{ selected_offer.revisions2 if selected_offer else '' }}" placeholder="Unlimited">
+                            <input name="revisions3" value="{{ selected_offer.revisions3 if selected_offer else '' }}" placeholder="2">
+                        </div>
+                        <div class="package-row">
+                            <span>Delivery time</span>
+                            <input name="delivery1" value="{{ selected_offer.delivery_time1_1day if selected_offer else '' }}" placeholder="1 day">
+                            <input name="delivery2" value="{{ selected_offer.delivery_time2 if selected_offer else '' }}" placeholder="2 days">
+                            <input name="delivery3" value="{{ selected_offer.delivery_time3 if selected_offer else '' }}" placeholder="3 days">
+                        </div>
+                        <div class="package-row">
+                            <span>Quick Delivery</span>
+                            <input name="quick_delivery1" value="{{ selected_offer.QuickDelivery1 if selected_offer else '' }}" placeholder="1 day">
+                            <input name="quick_delivery2" value="{{ selected_offer.QuickDelivery2 if selected_offer else '' }}" placeholder="1 day">
+                            <input name="quick_delivery3" value="{{ selected_offer.QuickDelivery3 if selected_offer else '' }}" placeholder="1 day">
+                        </div>
+                        <div class="package-row">
+                            <span>Quick Charge</span>
+                            <input name="quick_charge1" value="{{ selected_offer.QuickDelChare1 if selected_offer else '' }}" placeholder="15">
+                            <input name="quick_charge2" value="{{ selected_offer.QuickDelChare2 if selected_offer else '' }}" placeholder="10">
+                            <input name="quick_charge3" value="{{ selected_offer.QuickDelChare3 if selected_offer else '' }}" placeholder="5">
+                        </div>
+                    </div>
+                    <div class="offer-bottom-fields">
+                        <label>
+                            About this offer
+                            <textarea name="about_offer1" rows="4">{{ selected_offer.about_this_offer1 if selected_offer else '' }}</textarea>
+                        </label>
+                        <label>
+                            File formats / details
+                            <textarea name="about_offer2" rows="4">{{ selected_offer.about_this_offer2 if selected_offer else '' }}</textarea>
+                        </label>
+                        <label>
+                            Offer images
+                            <input type="file" name="offer_images" multiple accept="image/*">
+                            <small>Maximum 3 images. Uploading new images will replace old offer slider images.</small>
+                        </label>
+                        <label>
+                            Source ZIP
+                            <input type="file" name="zip_file" accept=".zip,.rar,.7z">
+                        </label>
+                    </div>
+                    <button type="submit">{{ "Update Offer" if selected_offer else "Save Offer" }}</button>
+                </form>
+                <aside class="panel-card">
+                    <h2>Your Services</h2>
+                    <div class="offer-thumb-grid">
+                        {% for offer in offers %}
+                            <a href="{{ url_for('designer_workspace', section='offers', offer_id=offer.id) }}">
+                                <span>No.{{ loop.index }}</span>
+                                <img src="{{ ('OfferImages/' ~ offer.image_path)|legacy_asset if offer.image_path else 'ProductImage/download.jpg'|legacy_asset }}" alt="{{ offer.offer_title }}">
+                                <strong>{{ offer.offer_title or "Untitled offer" }}</strong>
+                            </a>
+                        {% else %}
+                            <div class="empty-state">
+                                <strong>No service found</strong>
+                                <span>Your first saved offer will appear here.</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </aside>
+            </section>
+        {% elif section == "products" %}
+            <section class="customer-layout">
+                <form class="course-form panel-card" method="post" enctype="multipart/form-data">
+                    <h2>Add Own Product</h2>
+                    <label>Product name <input type="text" name="product_name" required></label>
+                    <label>Price <input type="number" name="price" min="0" step="1" required></label>
+                    <label>Sale price <input type="number" name="sale_price" min="0" step="1"></label>
+                    <label>Quantity <input type="number" name="quantity" min="1" value="1"></label>
+                    <label>
+                        Category
+                        <select name="category_id">
+                            {% for cat in categories %}
+                                <option value="{{ cat.id }}">{{ cat.CategoryName }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    <label>
+                        Sub Category
+                        <select name="subcategory_id">
+                            <option value="0">Select sub category</option>
+                            {% for sub in subcategories %}
+                                <option value="{{ sub.id }}">{{ sub.SubcatName }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    <label>Unit <input type="text" name="unit" placeholder="pcs / kg"></label>
+                    <label>Made by <input type="text" name="made_by" value="{{ session.get('username') }}"></label>
+                    <label>Commission % <input type="number" name="commission" min="0" step="1" value="0"></label>
+                    <label class="wide">Description <textarea name="description" rows="4"></textarea></label>
+                    <label class="wide">Product details <textarea name="details" rows="4"></textarea></label>
+                    <label class="wide">Product images <input type="file" name="product_images" multiple accept="image/*"></label>
+                    <fieldset class="customer-style-picker wide">
+                        <legend>Options</legend>
+                        <label><input type="checkbox" name="free_delivery" value="1"> Free delivery</label>
+                        <label><input type="checkbox" name="return_30" value="1"> 30 day return</label>
+                        <label><input type="checkbox" name="cod" value="1"> COD</label>
+                    </fieldset>
+                    <button type="submit">Save Product</button>
+                </form>
+                <div class="panel-card customer-main-panel">
+                    <h2>Your Ecommerce Products</h2>
+                    <div class="designer-card-grid">
+                        {% for product in own_products %}
+                            <article class="designer-submission-card">
+                                <img src="{{ product|product_image|legacy_asset }}" alt="{{ product.PName }}">
+                                <strong>{{ product.PName }}</strong>
+                                <span>Price: Tk {{ product.PSelPrice or product.PPrice or 0 }}</span>
+                                <small>Status: {{ product.Status or "Pending" }}</small>
+                            </article>
+                        {% else %}
+                            <div class="empty-state"><strong>No own product found</strong><span>Save a product using the Add Product form.</span></div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </section>
+        {% elif section == "affiliate" %}
+            <section class="customer-layout">
+                <div class="panel-card">
+                    <h2>Add Other Product as Affiliate</h2>
+                    <form class="inline-filter" method="get">{% if workspace_mode %}<input type="hidden" name="workspace" value="1">{% endif %}
+                        <input type="text" name="q" value="{{ product_search }}" placeholder="Search product or seller">
+                        <button type="submit">Search</button>
+                    </form>
+                    <form class="course-form" method="post">
+                        <div class="affiliate-product-picker">
+                            {% for product in product_results %}
+                                <label class="affiliate-product-option">
+                                    <input type="radio" name="product_id" value="{{ product.PID }}" required {% if loop.first %}checked{% endif %}>
+                                    <img src="{{ product|product_image|legacy_asset }}" alt="{{ product.PName }}">
+                                    <span>#{{ product.PID }} - {{ product.PName }}</span>
+                                    <small>{{ product.MainItemSellerName }} · Tk {{ product.PSelPrice or product.PPrice or 0 }}</small>
+                                </label>
+                            {% else %}
+                                <div class="empty-state">
+                                    <strong>No product found</strong>
+                                    <span>Search for an approved product.</span>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <label>Affiliate price <input type="number" name="affiliate_price" min="0" step="1"></label>
+                        <label>Commission % <input type="number" name="commission_percent" min="0" step="1"></label>
+                        <label>Note <textarea name="note" rows="3"></textarea></label>
+                        <button type="submit">Add Affiliate Product</button>
+                    </form>
+                </div>
+                <div class="panel-card customer-main-panel">
+                    <h2>Your Affiliate Products</h2>
+                    <div class="designer-card-grid">
+                        {% for item in affiliate_products %}
+                            <article class="designer-submission-card">
+                                <img src="{{ item|product_image|legacy_asset }}" alt="{{ item.PName }}">
+                                <strong>{{ item.PName }}</strong>
+                                <span>Owner: {{ item.MainItemSellerName }}</span>
+                                <small>Affiliate: Tk {{ item.AffiliatePrice or item.PSelPrice or item.PPrice or 0 }} · {{ item.CommissionPercent or 0 }}%</small>
+                            </article>
+                        {% else %}
+                            <div class="empty-state"><strong>No affiliate product found</strong><span>Search for a product and add it to your profile.</span></div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </section>
+        {% elif section == "profile" %}
+            <section class="panel-card">
+                <div class="panel-heading">
+                    <div>
+                        <h2>Designer Profile</h2>
+                        <p>Public URL: <a href="{{ public_profile_url }}">{{ public_profile_url }}</a></p>
+                    </div>
+                </div>
+                <form class="designer-profile-form" method="post" enctype="multipart/form-data">
+                    <input type="hidden" name="action" value="profile">
+                    <div class="designer-profile-edit-grid">
+                        <label>User Name <input type="text" name="username" value="{{ (profile or {}).get('Username') or '' }}" required></label>
+                        <label>Address <input type="text" name="address" value="{{ (profile or {}).get('Address') or '' }}"></label>
+                        <label>First Name <input type="text" name="first_name" value="{{ (profile or {}).get('FirstName') or '' }}"></label>
+                        <label>City <input type="text" name="city" value="{{ (profile or {}).get('City') or '' }}"></label>
+                        <label>Last Name <input type="text" name="last_name" value="{{ (profile or {}).get('LastName') or '' }}"></label>
+                        <label>State <input type="text" name="state" value="{{ (profile or {}).get('State') or '' }}"></label>
+                        <label>Phone <input type="text" name="phone" value="{{ (profile or {}).get('Phone') or '' }}"></label>
+                        <label>Postal Code <input type="text" name="postal_code" value="{{ (profile or {}).get('PostalCode') or '' }}"></label>
+                        <label>Picture <input type="file" name="picture" accept="image/*"></label>
+                        <label>About Me <textarea name="about_me" rows="4">{{ (profile or {}).get('AboutMe') or '' }}</textarea></label>
+                    </div>
+                    <div class="designer-expertise-box">
+                        <strong>Expert In:</strong>
+                        <div>
+                            {% for service in service_types %}
+                                {% set service_name = service.Services %}
+                                <label><input type="checkbox" name="expertise" value="{{ service_name }}" {% if service_name in designer_expertise %}checked{% endif %}> {{ service_name }}</label>
+                            {% else %}
+                                <span>No service type found.</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <button type="submit">Update Information</button>
+                </form>
+            </section>
+
+            <section class="panel-card">
+                <div class="panel-heading">
+                    <div>
+                        <h2>Change Your Password</h2>
+                        <p>Enter your current password to set a new password.</p>
+                    </div>
+                </div>
+                <form class="designer-password-form" method="post">
+                    <input type="hidden" name="action" value="password">
+                    <label>Old Password <input type="password" name="old_password" required></label>
+                    <label>New Password <input type="password" name="new_password" required></label>
+                    <label>Confirm Password <input type="password" name="confirm_password" required></label>
+                    <button type="submit">Change Password</button>
+                </form>
+            </section>
+
+            <section class="panel-card">
+                <div class="panel-heading">
+                    <div>
+                        <h2>My Services Profile</h2>
+                        <p>Services added from Offer Place appear on your public profile.</p>
+                    </div>
+                </div>
+                <div class="profile-service-grid">
+                    {% for offer in offers %}
+                        <article class="profile-service-card">
+                            <img src="{{ ('OfferImages/' ~ offer.image_path)|legacy_asset if offer.image_path else 'ProductImage/download.jpg'|legacy_asset }}" alt="{{ offer.offer_title }}">
+                            <div>
+                                <span>{{ offer.OfferType }}</span>
+                                <strong>{{ offer.offer_title }}</strong>
+                                <p>Basic Tk {{ offer.offer_amount3 or 0 }} · Standard Tk {{ offer.offer_amount2 or 0 }} · Premium Tk {{ offer.offer_amount1 or 0 }}</p>
+                            </div>
+                        </article>
+                    {% else %}
+                        <div class="empty-state"><strong>No service found</strong><span>Add a service from Offer Place.</span></div>
+                    {% endfor %}
+                </div>
+            </section>
+        {% elif section == "submit" %}
+            <section class="designer-grid">
+                <form class="course-form panel-card" method="post" enctype="multipart/form-data">
+                    <span class="eyebrow">STEP 2 OF 2</span><h2>Submit Contest Design</h2><input type="hidden" name="csrf_token" value="{{ portal_csrf() }}">{% if selected_job %}<p><a href="{{ url_for('market.existing_job_detail',job_id=selected_job.Jobid) }}">Back to Job Details</a></p>{% endif %}
+                    <label>
+                        Job
+                        <select name="job_id">
+                            <option value="">Select contest or use design link</option>
+                            {% for job in jobs if (job.BitOrContest or "Contest")|lower == "contest" %}
+                                <option value="{{ job.Jobid }}" {% if selected_job and selected_job.Jobid == job.Jobid %}selected{% endif %}>
+                                    #{{ job.Jobid }} - {{ job.Title or job.Type or "Untitled" }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    <label>
+                        Design link
+                        <input type="text" name="design_link" placeholder="Optional: old project design link">
+                    </label>
+                    <label>
+                        Design Title / Description
+                        <textarea name="title" rows="3" maxlength="2000" required placeholder="Describe your design">{{ request.form.get('title','') }}</textarea>
+                    </label>
+                    <label>
+                        JPG/JPEG preview
+                        <input type="file" name="jpg_file" accept=".jpg,.jpeg,image/jpeg" required>
+                    </label>
+                    <label>
+                        ZIP source file
+                        <input type="file" name="zip_file" accept=".zip,.rar,.7z">
+                    </label>
+                    <label>
+                        AI/PSD/source file
+                        <input type="file" name="ai_file">
+                    </label>
+                    <button type="submit">Submit &amp; Upload</button>
+                </form>
+                <div class="panel-card">
+                    <h2>Work Details</h2>
+                    {% if selected_job %}
+                        <div class="designer-detail">
+                            <strong>{{ selected_job.Title or "Untitled job" }}</strong>
+                            <span>Job #{{ selected_job.Jobid }} · {{ selected_job.Type }}</span>
+                            <p>{{ (selected_job.Description or "No description added.")|decode_html|striptags }}</p>
+                            <dl>
+                                <dt>Price</dt><dd>Tk {{ selected_job.Price or 0 }}</dd>
+                                <dt>Deadline</dt><dd>{{ selected_job.Deadline }}</dd>
+                                <dt>Title Text</dt><dd>{{ selected_job.Logotext or "N/A" }}</dd>
+                                <dt>Must Follow</dt><dd>{{ (selected_job.MustFollow or "N/A")|decode_html|striptags }}</dd>
+                            </dl>
+                        </div>
+                    {% else %}
+                        <div class="empty-state">
+                            <strong>Select a job</strong>
+                            <span>Select a job from Work Order List to load its details here.</span>
+                        </div>
+                    {% endif %}
+                </div>
+            </section>
+        {% elif section == "submissions" or section == "status" %}
+            {% set rows = selected_submissions if section == "status" else submissions %}
+            <section class="panel-card">
+                <div class="panel-heading">
+                    <div>
+                        <h2>{{ "Design Status" if section == "status" else "My Design" }}</h2>
+                        <p>{{ rows|length }} submitted design found.</p>
+                    </div>
+                </div>
+                <div class="designer-card-grid">
+                    {% for item in rows %}
+                        <article class="designer-submission-card">
+                            {% if item.jpgfile %}
+                                <img src="{{ item.jpgfile|legacy_asset }}" alt="{{ item.SubmissionTitle or item.Title }}">
+                            {% endif %}
+                            <strong>{{ item.SubmissionTitle or item.Title or "Submitted design" }}</strong>
+                            <span>Job #{{ item.jobid }} · {{ item.Type or "General" }}</span>
+                            <small>Status: {{ item.status or "Pending" }}</small>
+                            {% if item.feedback %}<p>{{ item.feedback }}</p>{% endif %}
+                        </article>
+                    {% else %}
+                        <div class="empty-state">
+                            <strong>No submission found</strong>
+                            <span>Work submitted from Design Submit appears here.</span>
+                        </div>
+                    {% endfor %}
+                </div>
+            </section>
+        {% elif section == "designs" %}
+            <section class="panel-card">
+                <div class="panel-heading">
+                    <div>
+                        <h2>All Design</h2>
+                        <p>User and sub-team submissions from old `Submission` table.</p>
+                    </div>
+                </div>
+                <div class="designer-card-grid">
+                    {% for item in designs %}
+                        <article class="designer-submission-card">
+                            {% if item.jpgfile %}
+                                <img src="{{ item.jpgfile|legacy_asset }}" alt="{{ item.title or item.JobTitle }}">
+                            {% endif %}
+                            <strong>{{ item.title or item.JobTitle or "Design" }}</strong>
+                            <span>Designer: {{ item.userid }} · Team: {{ item.SubTeam or "N/A" }}</span>
+                            <small>Status: {{ item.status or "Pending" }}</small>
+                        </article>
+                    {% else %}
+                        <div class="empty-state">
+                            <strong>No design found</strong>
+                            <span>Team submission data ekhono nei.</span>
+                        </div>
+                    {% endfor %}
+                </div>
+            </section>
+        {% elif section == "orders" %}
+            <section class="panel-card">
+                <div class="panel-heading">
+                    <div>
+                        <h2>My Orders</h2>
+                        <p>Designer order list from `Order_List`.</p>
+                    </div>
+                </div>
+                <div class="admin-table-wrap">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Order</th>
+                                <th>Offer</th>
+                                <th>Type</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for order in orders %}
+                                <tr>
+                                    <td>#{{ order.Oder_id }}</td>
+                                    <td>{{ order.offer_title or order.Offer_id }}</td>
+                                    <td>{{ order.OfferType or "N/A" }}</td>
+                                    <td>Tk {{ order.OfferAmount or 0 }}</td>
+                                    <td>{{ order.status or "Pending" }}</td>
+                                    <td>{{ order.Order_date }}</td>
+                                </tr>
+                            {% else %}
+                                <tr><td colspan="6">No designer order found.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        {% elif section == "messages" %}
+            <section class="panel-card">
+                <div class="panel-heading">
+                    <div>
+                        <h2>Messages</h2>
+                        <p>Old message tables connected for this designer.</p>
+                    </div>
+                </div>
+                <div class="designer-message-list">
+                    {% for item in messages %}
+                        <article>
+                            <strong>{{ item.Subject or "Message" }}</strong>
+                            <span>Job #{{ item.Jobid or "N/A" }} · {{ item.Date }}</span>
+                            <p>{{ item.Details or "No message body." }}</p>
+                        </article>
+                    {% else %}
+                        <div class="empty-state">
+                            <strong>No message found</strong>
+                            <span>Client messages will appear here.</span>
+                        </div>
+                    {% endfor %}
+                </div>
+            </section>
+        {% endif %}
+    </section>
+</main>
+{% endblock %}

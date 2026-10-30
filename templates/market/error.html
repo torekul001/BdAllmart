@@ -1,0 +1,1 @@
+{% extends 'market/layout.html' %}{% block content %}<section class="panel empty"><span class="eyebrow">Try Again</span><h1>{{ title }}</h1><p>{{ message }}</p><a class="button" href="{{ url_for('market.home') }}">Return to Dashboard</a><a href="{{ url_for('login') }}">Open Existing Marketplace →</a></section>{% endblock %}

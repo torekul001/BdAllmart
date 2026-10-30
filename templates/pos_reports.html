@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% block body %}
+<main class="dashboard">
+    <aside class="sidebar">
+        <a class="brand" href="{{ url_for('pos_dashboard') }}"><img src="{{ url_for('static', filename='bdallmartLogo.png', v='20260518-logo') }}" alt="bdallmart.com"> bdallmart.com</a>
+        <div class="sidebar-user">
+            <strong>{{ session.get("username") or "POS" }}</strong>
+            <span>{{ role }}</span>
+        </div>
+        <nav>
+            {% if menu_groups %}
+                {% for group_title, group_items in menu_groups %}
+                    <div class="sidebar-menu-group">
+                        <h3>{{ group_title }}</h3>
+                        {% for label, href in group_items %}
+                            <a class="{% if request.path == href %}active{% endif %}" href="{{ href }}">{{ label }}</a>
+                        {% endfor %}
+                    </div>
+                {% endfor %}
+            {% else %}
+                {% for label, href in menu %}
+                    <a class="{% if request.path == href %}active{% endif %}" href="{{ href }}">{{ label }}</a>
+                {% endfor %}
+            {% endif %}
+            {% include '_workspace_menu.html' %}
+        </nav>
+        <a class="sidebar-logout" href="{{ url_for('logout') }}">Logout</a>
+    </aside>
+
+    <section class="content pos-report-dashboard">
+        <header class="dashboard-topbar">
+            <div>
+                <span>{{ accent }}</span>
+                <h1>POS Sales Reports</h1>
+                <p>Date to date sales, category/product breakdown, and top selling product trends.</p>
+            </div>
+            <div class="dashboard-top-actions">
+                <a class="workspace-entry" href="{{ url_for('market.home') }}">New Features ↗</a>
+                <a href="{{ url_for('pos_sale') }}">POS Sale</a>
+                <a href="{{ url_for('pos_dashboard') }}">Dashboard</a>
+            </div>
+        </header>
+
+        <form class="pos-report-filter" method="get">
+            <label>From <input type="date" name="date_from" value="{{ date_from }}"></label>
+            <label>To <input type="date" name="date_to" value="{{ date_to }}"></label>
+            <button type="submit">Show Report</button>
+        </form>
+
+        {% if error %}
+            <div class="message error">{{ error }}</div>
+        {% endif %}
+
+        <section class="dashboard-stats pos-report-stats">
+            <article><strong>{{ report.summary.TotalOrders or 0 }}</strong><span>Total Orders</span></article>
+            <article><strong>{{ report.summary.TotalQty or 0 }}</strong><span>Total Item Sold</span></article>
+            <article><strong>{{ "%.2f"|format(report.summary.TotalSales or 0) }}</strong><span>Total Sales</span></article>
+            <article><strong>{{ "%.2f"|format(report.summary.AvgLineSale or 0) }}</strong><span>Avg Line Sale</span></article>
+        </section>
+
+        <section class="pos-report-grid">
+            <article class="pos-report-card">
+                <div class="pos-report-card-head">
+                    <div>
+                        <span>Graph</span>
+                        <h2>Top Selling Products</h2>
+                    </div>
+                </div>
+                <div class="pos-bar-chart">
+                    {% for row in report.top_products %}
+                        <div class="pos-bar-row">
+                            <span title="{{ row.Pname }}">{{ row.Pname }}</span>
+                            <div><i style="width: {{ ((row.TotalQty or 0) / report.max_top_qty * 100)|round(0, 'floor') }}%"></i></div>
+                            <strong>{{ row.TotalQty }}</strong>
+                        </div>
+                    {% else %}
+                        <div class="empty-state"><strong>No product sales found</strong><span>Select another date range.</span></div>
+                    {% endfor %}
+                </div>
+            </article>
+
+            <article class="pos-report-card">
+                <div class="pos-report-card-head">
+                    <div>
+                        <span>Graph</span>
+                        <h2>Daily Sales</h2>
+                    </div>
+                </div>
+                <div class="pos-column-chart">
+                    {% for row in report.daily_sales %}
+                        <div class="pos-column">
+                            <div><i style="height: {{ ((row.TotalSales or 0) / report.max_daily_sales * 100)|round(0, 'floor') }}%"></i></div>
+                            <strong>{{ "%.0f"|format(row.TotalSales or 0) }}</strong>
+                            <span>{{ row.SaleDate[5:] }}</span>
+                        </div>
+                    {% else %}
+                        <div class="empty-state"><strong>No daily sales found</strong><span>POS sales will appear here.</span></div>
+                    {% endfor %}
+                </div>
+            </article>
+        </section>
+
+        <section class="pos-report-grid">
+            <article class="pos-report-card">
+                <div class="pos-report-card-head">
+                    <div>
+                        <span>Category Wise</span>
+                        <h2>Category Sales Report</h2>
+                    </div>
+                </div>
+                <div class="pos-report-table-wrap">
+                    <table class="pos-report-table">
+                        <thead><tr><th>Category</th><th>Qty</th><th>Sales</th><th>Share</th></tr></thead>
+                        <tbody>
+                            {% for row in report.categories %}
+                                <tr>
+                                    <td>{{ row.CategoryName }}</td>
+                                    <td>{{ row.TotalQty }}</td>
+                                    <td>{{ "%.2f"|format(row.TotalSales or 0) }}</td>
+                                    <td><div class="mini-share"><i style="width: {{ ((row.TotalSales or 0) / report.max_category_sales * 100)|round(0, 'floor') }}%"></i></div></td>
+                                </tr>
+                            {% else %}
+                                <tr><td colspan="4">No category sales found.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </article>
+
+            <article class="pos-report-card">
+                <div class="pos-report-card-head">
+                    <div>
+                        <span>Product Wise</span>
+                        <h2>Product Sales Report</h2>
+                    </div>
+                </div>
+                <div class="pos-report-table-wrap">
+                    <table class="pos-report-table">
+                        <thead><tr><th>Product</th><th>Category</th><th>Qty</th><th>Sales</th></tr></thead>
+                        <tbody>
+                            {% for row in report.products %}
+                                <tr>
+                                    <td>{{ row.Pname }}</td>
+                                    <td>{{ row.CategoryName }}</td>
+                                    <td>{{ row.TotalQty }}</td>
+                                    <td>{{ "%.2f"|format(row.TotalSales or 0) }}</td>
+                                </tr>
+                            {% else %}
+                                <tr><td colspan="4">No product sales found.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </article>
+        </section>
+    </section>
+</main>
+{% endblock %}

@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block body %}
+<main class="checkout-success-page">
+    <section class="checkout-success-card">
+        <span>Order placed</span>
+        <h1>Thank you. Your order has been received.</h1>
+        <p>Order ID: <strong>{{ order_id }}</strong></p>
+        <p>A confirmation SMS has been sent to the customer mobile number, and admin notification has been sent.</p>
+        <div>
+            <a class="btn" href="{{ url_for('login') }}">Continue Shopping</a>
+            <a class="back-to-cart" href="{{ url_for('cart') }}">View Cart</a>
+        </div>
+    </section>
+</main>
+{% endblock %}

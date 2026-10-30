@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block body %}
+<main class="dashboard">
+    <aside class="sidebar">
+        <a class="brand" href="{{ url_for('dashboard') }}"><img src="{{ url_for('static', filename='bdallmartLogo.png', v='20260518-logo') }}" alt="bdallmart.com"> bdallmart.com</a>
+        <div class="sidebar-user">
+            <strong>{{ session.get("username") }}</strong>
+            <span>{{ session.get("category") }}</span>
+        </div>
+        <nav>
+            {% for label, href in menu %}
+                <a class="{% if request.path == href %}active{% endif %}" href="{{ href }}">{{ label }}</a>
+            {% endfor %}
+            {% include '_workspace_menu.html' %}
+        </nav>
+        <a class="sidebar-logout" href="{{ url_for('logout') }}">Logout</a>
+    </aside>
+
+    <section class="content">
+        <header class="dashboard-topbar">
+            <div>
+                <span>Student learning area</span>
+                <h1>My Assigned Courses</h1>
+                <p>Only assigned lessons are visible here.</p>
+            </div>
+            <div class="dashboard-top-actions">
+                <a class="workspace-entry" href="{{ url_for('market.home') }}">New Features ↗</a>
+                <a href="{{ url_for('course_manage') }}">Add Video</a>
+                <a href="{{ url_for('course_assign') }}">Assign</a>
+            </div>
+        </header>
+
+        <section class="panel-card">
+            {% if student %}
+                <div class="course-student-banner">
+                    <div>
+                        <span>Student</span>
+                        <strong>{{ student.Name }}</strong>
+                    </div>
+                    <div>
+                        <span>Student ID</span>
+                        <strong>{{ student.StdId }}</strong>
+                    </div>
+                    <div>
+                        <span>Course Category</span>
+                        <strong>{{ student.Course or "Assigned Course" }}</strong>
+                    </div>
+                </div>
+                <div class="course-video-grid student-videos">
+                    {% for video in videos %}
+                        <article class="course-video-card">
+                            <iframe src="https://www.youtube.com/embed/{{ video.VideoLink }}" allowfullscreen></iframe>
+                            <div>
+                                <strong>{{ video.Name }}</strong>
+                                <span>{{ video.CourseCategory or video.Course }}</span>
+                            </div>
+                        </article>
+                    {% else %}
+                        <div class="empty-state">
+                            <strong>No assigned videos yet</strong>
+                            <span>Please contact admin or institute to assign course lessons.</span>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <strong>Student profile not found</strong>
+                    <span>Your login username, phone, or email did not match a record in StudentAdmision.</span>
+                </div>
+            {% endif %}
+        </section>
+    </section>
+</main>
+{% endblock %}

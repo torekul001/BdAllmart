@@ -1,0 +1,259 @@
+{% extends "base.html" %}
+{% block body %}
+<header class="store-top">
+    <div class="store-bar">
+        <a href="{{ url_for('market.listings') }}">Seller Center</a>
+        <a href="{{ url_for('ask_chat') }}">Help</a>
+        {% if session.get("user_id") %}
+            <a href="{{ user_dashboard_url }}">Dashboard</a>
+            <a href="{{ url_for('logout') }}">Logout</a>
+        {% else %}
+            <a href="{{ url_for('register') }}">Register</a>
+            <a href="#login-panel">Login</a>
+        {% endif %}
+    </div>
+    <div class="store-header">
+        <div class="market-logo"><img src="{{ url_for('static', filename='bdallmartLogo.png', v='20260518-logo') }}" alt="bdallmart.com"><strong>bdallmart.com</strong></div>
+        <form class="search-box" method="get" action="{{ url_for('ask_chat') }}">
+            <input type="search" name="q" placeholder="Ask products, services, courses, jobs">
+            <button type="submit">Ask</button>
+        </form>
+        <div class="quick-actions">
+            <a href="{{ request.path }}?cart=open">Cart ({{ cart_count }})</a>
+            <a href="{{ url_for('customer_workspace',section='orders') }}">Orders</a>
+            <a href="{{ url_for('customer_workspace',section='messages') }}">Messages</a>
+        </div>
+    </div>
+    <nav class="store-nav">
+        {% for category in categories %}
+            <div class="menu-item">
+                <a href="{{ url_for('category_products', category_id=category.id) }}">{{ category.name }}</a>
+                {% if category.subcategories %}
+                    <div class="submenu">
+                        {% for subcategory in category.subcategories %}
+                            <a href="{{ url_for('category_products', category_id=category.id, sub=subcategory.id) }}">{{ subcategory.name }}</a>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+        {% endfor %}
+        <div class="menu-item"><a href="#services">Services</a></div>
+        <div class="menu-item"><a href="#jobs">Freelance Jobs</a></div>
+        <div class="menu-item"><a href="{{ url_for('register') }}">Become a Seller</a></div>
+    </nav>
+</header>
+
+<main class="market-page">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="flash-stack">
+                {% for category, message in messages %}
+                    <div class="message {{ category }}">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <section class="hero-grid">
+        <div class="hero-banner" data-hero-slider>
+            <div class="hero-slides">
+                {% for image in slider_images %}
+                    <div class="hero-slide{% if loop.first %} active{% endif %}">
+                        <img src="{{ url_for('static', filename=image, v='20260520-slider-2') }}" alt="bdallmart.com marketplace slide {{ loop.index }}">
+                    </div>
+                {% else %}
+                    <div class="hero-slide active"></div>
+                {% endfor %}
+            </div>
+            <div class="hero-content">
+                <span>All-in-one online platform</span>
+                <h1>Products, services, freelance jobs, and courses in one marketplace</h1>
+                <p>Buy products, sell through your profile, hire freelancers and discover new courses.</p>
+                <a class="hero-btn" href="{{ url_for('register') }}">Start Selling</a>
+            </div>
+            {% if slider_images|length > 1 %}
+                <div class="hero-dots" aria-label="Slider navigation">
+                    {% for image in slider_images %}
+                        <button type="button" class="{% if loop.first %}active{% endif %}" data-hero-dot="{{ loop.index0 }}" aria-label="Show slide {{ loop.index }}"></button>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+        <aside id="login-panel" class="login-card">
+            <h2>Account Login</h2>
+            <p>Single login for all 6 user roles.</p>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% for category, message in messages %}
+                    <div class="message {{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endwith %}
+
+            <form method="post">
+                <input type="hidden" name="next" value="{{ next_url }}">
+                <label>Email, Phone or Username
+                    <input name="login" class="input" autocomplete="username" required>
+                </label>
+                <label>Password
+                    <input name="password" type="password" class="input" autocomplete="current-password" required>
+                </label>
+                <button class="btn" type="submit">Login</button>
+            </form>
+            <a class="create-link" href="{{ url_for('register') }}">Create a new account</a>
+        </aside>
+    </section>
+
+    <script>
+        (function () {
+            const hero = document.querySelector("[data-hero-slider]");
+            if (!hero) return;
+            const slides = Array.from(hero.querySelectorAll(".hero-slide"));
+            const dots = Array.from(hero.querySelectorAll("[data-hero-dot]"));
+            if (slides.length <= 1) return;
+            let index = 0;
+            function showSlide(nextIndex) {
+                index = (nextIndex + slides.length) % slides.length;
+                slides.forEach(function (slide, slideIndex) {
+                    slide.classList.toggle("active", slideIndex === index);
+                });
+                dots.forEach(function (dot, dotIndex) {
+                    dot.classList.toggle("active", dotIndex === index);
+                });
+            }
+            let timer = window.setInterval(function () {
+                showSlide(index + 1);
+            }, 4500);
+            dots.forEach(function (dot, dotIndex) {
+                dot.addEventListener("click", function () {
+                    showSlide(dotIndex);
+                    window.clearInterval(timer);
+                    timer = window.setInterval(function () {
+                        showSlide(index + 1);
+                    }, 4500);
+                });
+            });
+        })();
+    </script>
+
+    <section class="category-strip">
+        {% for category in categories %}
+            <a href="{{ url_for('category_products', category_id=category.id) }}" class="category-pill">
+                <img src="{{ category.image|legacy_asset }}" alt="{{ category.name }}">
+                <span>{{ category.name }}</span>
+            </a>
+        {% endfor %}
+    </section>
+
+    {% for section in sections %}
+        <section class="market-section" id="category-{{ section.id or loop.index }}">
+            <div class="section-title">
+                <div>
+                    <a class="section-category-link" href="{{ url_for('category_products', category_id=section.id) }}">{{ section.title }}</a>
+                    <span>{{ section.tag }}</span>
+                </div>
+                <a href="{{ url_for('category_products', category_id=section.id) }}">View all</a>
+            </div>
+            {% if section.subcategories %}
+                <div class="subcategory-row">
+                    {% for subcategory in section.subcategories %}
+                        <a id="subcategory-{{ subcategory.id }}" href="{{ url_for('category_products', category_id=section.id, sub=subcategory.id) }}">{{ subcategory.name }}</a>
+                    {% endfor %}
+                </div>
+            {% endif %}
+            <div class="product-scroll-wrap">
+                <button class="scroll-btn left" type="button" aria-label="Scroll left" onclick="this.parentElement.querySelector('.product-row').scrollBy({left: -560, behavior: 'smooth'})">‹</button>
+                <div class="product-row">
+                {% if section.title|trim|lower == 'it service' %}
+                    {% for course in training_courses %}
+                        <article class="product-card"{% if loop.first %} id="training-courses"{% endif %}>
+                            <a class="product-media" href="{{ url_for('training_details', video_id=course.Id) }}">
+                                <img src="https://i.ytimg.com/vi/{{ course.VideoLink|urlencode }}/hqdefault.jpg" alt="{{ course.Name }}" loading="lazy">
+                            </a>
+                            <h3><a href="{{ url_for('training_details', video_id=course.Id) }}">{{ course.Name }}</a></h3>
+                            <p>Training</p>
+                            <span class="seller-name">{{ course.CourseCategory or course.Course }}</span>
+                            <a class="profile-action-link" href="{{ url_for('training_details', video_id=course.Id) }}">View Course Details</a>
+                        </article>
+                    {% endfor %}
+                {% endif %}
+                {% for product in section.products %}
+                    <article class="product-card">
+                        <a class="product-media" href="{{ url_for('product_details', product_id=product.id) }}">
+                            <img src="{{ product.image|legacy_asset }}" alt="{{ product.name }}">
+                        </a>
+                        <h3><a href="{{ url_for('product_details', product_id=product.id) }}">{{ product.name }}</a></h3>
+                        <p>Price: Tk {{ product.price }}</p>
+                        {% if product.seller %}
+                            <span class="seller-name">{{ product.seller }}</span>
+                        {% endif %}
+                        <form class="card-cart-form" method="post" action="{{ url_for('add_to_cart', product_id=product.id) }}">
+                            <input type="hidden" name="next" value="{{ request.path }}">
+                            <button type="submit">Add</button>
+                        </form>
+                        {% if session.get("user_id") and (session.get("category") or "")|trim|lower in ["customer", "consumer", "designer", "freelancer"] %}
+                            <form class="card-cart-form profile-add-form" method="post" action="{{ url_for('add_product_to_profile', product_id=product.id) }}">
+                                <input type="hidden" name="next" value="{{ request.path }}">
+                                <button type="submit">Add to Profile</button>
+                            </form>
+                        {% else %}
+                            <a class="profile-action-link" href="{{ url_for('product_details', product_id=product.id) }}">Apply</a>
+                        {% endif %}
+                    </article>
+                {% endfor %}
+                </div>
+                <button class="scroll-btn right" type="button" aria-label="Scroll right" onclick="this.parentElement.querySelector('.product-row').scrollBy({left: 560, behavior: 'smooth'})">›</button>
+            </div>
+        </section>
+    {% endfor %}
+
+    <section class="market-section services" id="services">
+        <div class="section-title">
+            <div>
+                <strong>Find Design or Freelancer</strong>
+                <span>Buy services or post a job to hire the right freelancer.</span>
+            </div>
+            <a href="{{ url_for('market.jobs') }}">Post job</a>
+        </div>
+        <div class="service-grid">
+            {% for title, text in services %}
+                <article>
+                    <span class="service-icon">{{ title[:1] }}</span>
+                    <div>
+                        <h3>{{ title }}</h3>
+                        <p>{{ text }}</p>
+                    </div>
+                </article>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="jobs-panel" id="jobs">
+        <form class="job-compose special-order-form" method="post" action="{{ url_for('special_orders.place') }}" enctype="multipart/form-data">
+            <h2>Place Order</h2><p>Tell us which service you need. Our team will review your special request.</p>
+            <input type="hidden" name="csrf_token" value="{{ portal_csrf() }}">
+            <label for="special-details">Order Requirements</label><textarea id="special-details" name="details" rows="6" maxlength="10000" placeholder="Describe the work you need..." required></textarea>
+            <label for="special-service">Service Type</label><select id="special-service" name="service_type" required><option value="">Select a service type</option>{% for item in special_service_types %}<option value="{{ item.Services }}">{{ item.Services }}</option>{% endfor %}</select>
+            <label for="special-email">Contact Email</label><input id="special-email" name="email" type="email" maxlength="50" value="{{ session.get('email','') }}" required autocomplete="email">
+            <div class="special-samples"><div><label for="special-image">Sample Image (optional)</label><input id="special-image" name="image" type="file" accept=".jpg,.jpeg,.png,.webp"></div><div><label for="special-file">Sample File (optional)</label><input id="special-file" name="asset" type="file" accept=".zip,.pdf,.jpg,.jpeg,.png,.webp,.ai"></div></div>
+            <p class="hint">Maximum 10 MB per file. You can submit a request without an account.</p><button class="btn" type="submit">Place Order</button>
+        </form>
+        <div class="recent-jobs"><h2>Recently Posted Jobs</h2>{% for job in market_jobs %}<div class="job-row"><div><strong><a href="{{ url_for(job.Endpoint,job_id=job.Id) }}">{{ job.Title|decode_html|striptags }}</a></strong><span>{{ job.Category }} · {{ 'Contest' if job.Kind=='contest' else 'Job / Bid' }}</span></div><b>{{ job.Budget|taka if job.Budget is not none else 'Contact Buyer' }}</b><a class="btn" href="{{ url_for(job.Endpoint,job_id=job.Id) }}">Apply</a></div>{% else %}<p>New jobs will appear here when published.</p>{% endfor %}<div class="post-job-link"><a class="btn" href="{{ url_for('market.jobs') }}">Post a Job / Contest →</a></div></div>
+    </section>
+
+
+    <section class="seller-cta">
+        <strong>Find an Expert Freelancer for any kinds of work, with confidence</strong>
+        <a href="{{ url_for('register') }}">Create your free account</a>
+    </section>
+</main>
+
+<footer class="store-footer">
+    <div>
+        <strong>bdallmart.com</strong>
+        <span>Multi-vendor ecommerce, freelance marketplace, service sales, and course management.</span>
+    </div>
+    <div class="payment-row">
+        <span>Visa</span><span>Mastercard</span><span>bKash</span><span>Nagad</span><span>PayPal</span>
+    </div>
+</footer>
+{% endblock %}

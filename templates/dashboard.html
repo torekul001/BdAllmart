@@ -1,0 +1,320 @@
+{% extends "base.html" %}
+{% block body %}
+<main class="dashboard">
+    <aside class="sidebar">
+        <a class="brand" href="{{ url_for('dashboard') }}"><img src="{{ url_for('static', filename='bdallmartLogo.png', v='20260518-logo') }}" alt="bdallmart.com"> bdallmart.com</a>
+        <div class="sidebar-user">
+            <strong>{{ session.get("username") }}</strong>
+            <span>{{ role }}</span>
+        </div>
+        <nav>
+            {% if menu_groups %}
+                {% for group_title, group_items in menu_groups %}
+                    <div class="sidebar-menu-group">
+                        <h3>{{ group_title }}</h3>
+                        {% for label, href in group_items %}
+                            <a class="{% if request.path == href %}active{% endif %}" href="{{ href }}">{{ label }}</a>
+                        {% endfor %}
+                    </div>
+                {% endfor %}
+            {% else %}
+                {% for label, href in menu %}
+                    <a class="{% if loop.first %}active{% endif %}" href="{{ href }}">{{ label }}</a>
+                {% endfor %}
+            {% endif %}
+            {% include '_workspace_menu.html' %}
+        </nav>
+        <a class="sidebar-logout" href="{{ url_for('logout') }}">Logout</a>
+    </aside>
+
+    <section class="content">
+        {% set is_admin_module_page = role == "Admin" and module_data %}
+        <header class="dashboard-topbar">
+            <div>
+                {% if is_admin_module_page %}
+                    <span>{{ selected_module.group if selected_module else "Admin module" }}</span>
+                    <h1>{{ module_data.title }}</h1>
+                    <p>{{ module_data.description }}</p>
+                {% else %}
+                    <span>{{ accent }}</span>
+                    <h1>{{ title }}</h1>
+                    <p>Welcome back, {{ session.get("username") }}. Manage your {{ role|lower }} workspace from one place.</p>
+                {% endif %}
+            </div>
+            <div class="dashboard-top-actions">
+                <a class="workspace-entry" href="{{ url_for('market.home') }}">New Features ↗</a>
+                <a href="{{ url_for('login') }}">Marketplace</a>
+                <a href="{{ url_for('cart') }}">Cart</a>
+            </div>
+        </header>
+
+        {% set show_dashboard_overview = not is_admin_module_page %}
+        {% if show_dashboard_overview %}
+            <section class="dashboard-profile">
+                <div>
+                    <span>Account</span>
+                    <strong>{{ session.get("username") }}</strong>
+                </div>
+                <div>
+                    <span>Email</span>
+                    <strong>{{ session.get("email") or "Not added" }}</strong>
+                </div>
+                <div>
+                    <span>Phone</span>
+                    <strong>{{ session.get("phone") or "Not added" }}</strong>
+                </div>
+                <div>
+                    <span>Status</span>
+                    <strong>Active</strong>
+                </div>
+            </section>
+
+            <section class="dashboard-stats {% if role == 'Admin' %}admin-sales-stats{% endif %}">
+                {% for value, label in stats %}
+                    <article>
+                        <strong>{{ value }}</strong>
+                        <span>{{ label }}</span>
+                    </article>
+                {% endfor %}
+            </section>
+        {% endif %}
+
+        {% if role == "Admin" and admin_summary and show_dashboard_overview %}
+            {% set pending_count = admin_summary.pending|int %}
+            {% set delivery_count = admin_summary.in_delivery|int %}
+            {% set delivered_count = admin_summary.delivered|int %}
+            {% set returned_count = admin_summary.returned|int %}
+            {% set cancelled_count = admin_summary.cancelled|int %}
+            {% set order_total = pending_count + delivery_count + delivered_count + returned_count + cancelled_count %}
+            {% set order_safe_total = order_total if order_total > 0 else 1 %}
+            {% set pending_deg = pending_count * 360 / order_safe_total %}
+            {% set delivery_deg = pending_deg + (delivery_count * 360 / order_safe_total) %}
+            {% set delivered_deg = delivery_deg + (delivered_count * 360 / order_safe_total) %}
+            {% set returned_deg = delivered_deg + (returned_count * 360 / order_safe_total) %}
+
+            {% set customer_count = admin_summary.customers|int %}
+            {% set designer_count = admin_summary.designers|int %}
+            {% set delivery_man_count = admin_summary.delivery_men|int %}
+            {% set vendor_count = admin_summary.vendors|int %}
+            {% set student_count = admin_summary.students|int %}
+            {% set user_total = customer_count + designer_count + delivery_man_count + vendor_count + student_count %}
+            {% set user_safe_total = user_total if user_total > 0 else 1 %}
+            {% set customer_deg = customer_count * 360 / user_safe_total %}
+            {% set designer_deg = customer_deg + (designer_count * 360 / user_safe_total) %}
+            {% set delivery_man_deg = designer_deg + (delivery_man_count * 360 / user_safe_total) %}
+            {% set vendor_deg = delivery_man_deg + (vendor_count * 360 / user_safe_total) %}
+
+            <section class="admin-overview-grid">
+                <article class="panel-card admin-chart-card">
+                    <div class="panel-heading">
+                        <div>
+                            <h2>Order Status</h2>
+                            <p>Total order, delivery man, delivered, return and pending mix.</p>
+                        </div>
+                    </div>
+                    <div class="admin-donut-wrap">
+                        <div class="admin-donut" style="background: conic-gradient(#f59e0b 0 {{ pending_deg }}deg, #1d72c8 {{ pending_deg }}deg {{ delivery_deg }}deg, #078c2f {{ delivery_deg }}deg {{ delivered_deg }}deg, #ef4444 {{ delivered_deg }}deg {{ returned_deg }}deg, #64748b {{ returned_deg }}deg 360deg);">
+                            <span>{{ admin_summary.total_orders }}</span>
+                            <small>Total Orders</small>
+                        </div>
+                        <div class="admin-chart-legend">
+                            <span><i class="amber"></i>Pending <strong>{{ pending_count }}</strong></span>
+                            <span><i class="blue"></i>In Delivery Man <strong>{{ delivery_count }}</strong></span>
+                            <span><i class="green"></i>Delivered <strong>{{ delivered_count }}</strong></span>
+                            <span><i class="red"></i>Return <strong>{{ returned_count }}</strong></span>
+                            <span><i class="slate"></i>Cancelled <strong>{{ cancelled_count }}</strong></span>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="panel-card admin-chart-card">
+                    <div class="panel-heading">
+                        <div>
+                            <h2>User Types</h2>
+                            <p>Total user, customer, delivery man and marketplace teams.</p>
+                        </div>
+                    </div>
+                    <div class="admin-donut-wrap">
+                        <div class="admin-donut" style="background: conic-gradient(#078c2f 0 {{ customer_deg }}deg, #7c3aed {{ customer_deg }}deg {{ designer_deg }}deg, #1d72c8 {{ designer_deg }}deg {{ delivery_man_deg }}deg, #f59e0b {{ delivery_man_deg }}deg {{ vendor_deg }}deg, #ef4444 {{ vendor_deg }}deg 360deg);">
+                            <span>{{ admin_summary.total_users }}</span>
+                            <small>Total Users</small>
+                        </div>
+                        <div class="admin-chart-legend">
+                            <span><i class="green"></i>Customer <strong>{{ customer_count }}</strong></span>
+                            <span><i class="purple"></i>Designer <strong>{{ designer_count }}</strong></span>
+                            <span><i class="blue"></i>Delivery Man <strong>{{ delivery_man_count }}</strong></span>
+                            <span><i class="amber"></i>Vendor <strong>{{ vendor_count }}</strong></span>
+                            <span><i class="red"></i>Student <strong>{{ student_count }}</strong></span>
+                        </div>
+                    </div>
+                </article>
+            </section>
+
+            <section class="admin-mini-metrics">
+                <article><span>Pending Orders</span><strong>{{ pending_count }}</strong></article>
+                <article><span>Return Orders</span><strong>{{ returned_count }}</strong></article>
+                <article><span>Customers</span><strong>{{ customer_count }}</strong></article>
+                <article><span>Delivery Man</span><strong>{{ delivery_man_count }}</strong></article>
+                <article><span>Total Users</span><strong>{{ admin_summary.total_users }}</strong></article>
+            </section>
+
+            <section class="panel-card admin-top-products">
+                <div class="panel-heading">
+                    <div>
+                        <h2>Top 10 Selling Products</h2>
+                        <p>Ranked by total quantity sold from ecommerce orders.</p>
+                    </div>
+                </div>
+                {% set max_sold = namespace(value=0) %}
+                {% for product in admin_summary.top_selling_products %}
+                    {% if (product.QuantitySold|int) > max_sold.value %}
+                        {% set max_sold.value = product.QuantitySold|int %}
+                    {% endif %}
+                {% endfor %}
+                <div class="admin-product-sales-list">
+                    {% for product in admin_summary.top_selling_products %}
+                        <article>
+                            <span class="admin-product-rank">#{{ loop.index }}</span>
+                            <div class="admin-product-name">
+                                <strong>{{ product.Product }}</strong>
+                                <small>{{ product.SalesAmountText }}</small>
+                            </div>
+                            <div class="admin-product-bar">
+                                <i style="width: {{ ((product.QuantitySold|int) * 100 / (max_sold.value or 1))|round(0, 'floor') }}%"></i>
+                            </div>
+                            <b>{{ product.QuantitySold|int }} sold</b>
+                        </article>
+                    {% else %}
+                        <div class="empty-state">
+                            <strong>No selling product found</strong>
+                            <span>Order data thakle ekhane top product list show korbe.</span>
+                        </div>
+                    {% endfor %}
+                </div>
+            </section>
+        {% endif %}
+
+        <section class="dashboard-grid {% if not module_data %}dashboard-grid-side-only{% endif %}">
+            {% if module_data %}
+                <div class="dashboard-panel">
+                    <div class="admin-data-panel">
+                        <div class="admin-data-heading">
+                            <div>
+                                <h2>{{ module_data.title }}</h2>
+                                <p>{{ module_data.description }}</p>
+                            </div>
+                            <strong>{{ module_data.rows|length }} rows</strong>
+                        </div>
+                        {% if module_data.filters %}
+                            <form class="admin-filter-bar" method="get">
+                                <label>
+                                    From
+                                    <input type="date" name="date_from" value="{{ module_data.filters.date_from or '' }}">
+                                </label>
+                                <label>
+                                    To
+                                    <input type="date" name="date_to" value="{{ module_data.filters.date_to or '' }}">
+                                </label>
+                                {% if 'delivery_man' in module_data.filters %}
+                                    <label>
+                                        Delivery Man
+                                        <select name="delivery_man">
+                                            <option value="">All delivery men</option>
+                                            {% for delivery in module_data.delivery_men %}
+                                                <option value="{{ delivery.Username }}" {% if module_data.filters.delivery_man == delivery.Username %}selected{% endif %}>
+                                                    {{ delivery.Username }}{% if delivery.Phone %} - {{ delivery.Phone }}{% endif %}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                    </label>
+                                {% endif %}
+                                <button type="submit">Filter</button>
+                                <a href="{{ request.path }}">Clear</a>
+                            </form>
+                        {% endif %}
+                        {% if module_data.error %}
+                            <div class="message error">{{ module_data.error }}</div>
+                        {% elif module_data.rows %}
+                            <div class="admin-table-wrap">
+                                <table class="admin-table">
+                                    <thead>
+                                        <tr>
+                                            {% for column in module_data.display_columns or module_data.columns %}
+                                                <th>{{ column }}</th>
+                                            {% endfor %}
+                                            {% if module_data.assignment_enabled %}
+                                                <th>Assign Delivery Man</th>
+                                            {% endif %}
+                                            {% if module_data.product_approval_enabled %}
+                                                <th>Approval</th>
+                                            {% endif %}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for row in module_data.rows %}
+                                            <tr>
+                                                {% for column in module_data.display_columns or module_data.columns %}
+                                                    <td>{{ row[column] }}</td>
+                                                {% endfor %}
+                                                {% if module_data.assignment_enabled %}
+                                                    <td>
+                                                        <form class="admin-assign-form" method="post">
+                                                            <input type="hidden" name="order_row_id" value="{{ row['_row_id'] }}">
+                                                            <input type="hidden" name="date_from" value="{{ module_data.filters.date_from or '' }}">
+                                                            <input type="hidden" name="date_to" value="{{ module_data.filters.date_to or '' }}">
+                                                            <select name="delivery_man" required>
+                                                                <option value="">Select delivery man</option>
+                                                                {% for delivery in module_data.delivery_men %}
+                                                                    <option value="{{ delivery.Username }}">{{ delivery.Username }}{% if delivery.Phone %} - {{ delivery.Phone }}{% endif %}</option>
+                                                                {% endfor %}
+                                                            </select>
+                                                            <button type="submit">Assign</button>
+                                                        </form>
+                                                    </td>
+                                                {% endif %}
+                                                {% if module_data.product_approval_enabled %}
+                                                    <td>
+                                                        <form class="admin-assign-form" method="post">
+                                                            <input type="hidden" name="product_id" value="{{ row['_product_id'] }}">
+                                                            <button type="submit" name="action" value="approve">Approve</button>
+                                                            <button class="danger-button" type="submit" name="action" value="delete">Delete</button>
+                                                        </form>
+                                                    </td>
+                                                {% endif %}
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <div class="empty-state">
+                                <strong>No data found</strong>
+                                <span>This module is connected, but there are no records to show yet.</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+
+            <aside class="dashboard-side-panel">
+                <section>
+                    <h2>Quick Actions</h2>
+                    <div class="quick-action-list">
+                        {% for action in actions %}
+                            <button type="button">{{ action }}</button>
+                        {% endfor %}
+                    </div>
+                </section>
+                <section>
+                    <h2>Recent Activity</h2>
+                    <div class="activity-list">
+                        {% for item in activity %}
+                            <p>{{ item }}</p>
+                        {% endfor %}
+                    </div>
+                </section>
+            </aside>
+        </section>
+    </section>
+</main>
+{% endblock %}

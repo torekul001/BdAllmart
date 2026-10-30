@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% block body %}
+{% set all_products = own_products + affiliate_products %}
+{% set avatar = profile|user_picture %}
+<main class="public-shop-page">
+    <header class="public-shop-hero">
+        <div class="public-shop-inner">
+            <a class="market-logo" href="{{ url_for('login') }}"><img src="{{ url_for('static', filename='bdallmartLogo.png', v='20260518-logo') }}" alt="bdallmart.com"><strong>bdallmart.com</strong></a>
+            <a class="public-home-btn" href="{{ url_for('login') }}">Home</a>
+        </div>
+    </header>
+
+    <section class="public-shop-search">
+        <div class="public-shop-inner search-line">
+            <div class="public-social">
+                <a href="#" aria-label="Facebook">f</a>
+                <a href="#" aria-label="YouTube">▶</a>
+                <a href="#" aria-label="Twitter">t</a>
+                <a href="#" aria-label="LinkedIn">in</a>
+            </div>
+            <form class="public-search-box" method="get" action="{{ url_for('ask_chat') }}">
+                <input name="q" type="search" placeholder="Search products, services, courses, jobs">
+                <button type="submit">Search</button>
+            </form>
+            <div class="public-actions">
+                <a href="{{ request.path }}?cart=open">Cart {{ cart_count }}</a>
+                <a href="{{ url_for('login') }}#login-panel">Login</a>
+                <a href="{{ url_for('register') }}">Register</a>
+                <a href="{{ url_for('register') }}">Join us</a>
+            </div>
+        </div>
+    </section>
+
+    <section class="public-profile-shell">
+        <aside class="public-profile-left">
+            <div class="public-profile-photo">
+                {% if avatar %}
+                    <img src="{{ avatar }}" alt="{{ profile.Username }}">
+                {% else %}
+                    <span>{{ (profile.Username or "U")[:2]|upper }}</span>
+                {% endif %}
+            </div>
+
+            <div class="public-widget activity-widget">
+                <h3>Activity</h3>
+                <dl>
+                    <dt>Your Product Sold</dt><dd>{{ own_products|length }}</dd>
+                    <dt>Other's Product Sold</dt><dd>{{ affiliate_products|length }}</dd>
+                    <dt>Earned By Your Item</dt><dd>0</dd>
+                    <dt>Earned By Other Item</dt><dd>0</dd>
+                </dl>
+            </div>
+
+            <div class="public-widget">
+                <h3>Social Media</h3>
+                <div class="profile-social-row">
+                    <a href="#">f</a><a href="#">●</a><a href="#">t</a><a href="#">p</a><a href="#">G+</a>
+                </div>
+            </div>
+
+            <div class="public-category-list">
+                {% for category in categories %}
+                    <a href="{{ url_for('category_products', category_id=category.id) }}">▶ {{ category.name }}</a>
+                {% endfor %}
+            </div>
+        </aside>
+
+        <section class="public-product-stage">
+            <div class="public-products-grid">
+                {% for product in own_products %}
+                    <article class="public-product-card">
+                        <a href="{{ url_for('product_details', product_id=product.PID) }}">
+                            <img src="{{ product|product_image|legacy_asset }}" alt="{{ product.PName }}">
+                        </a>
+                        <h3>{{ product.PName }}</h3>
+                        <strong>Price : {{ product.PSelPrice or product.PPrice or 0 }}</strong>
+                        <form method="post" action="{{ url_for('add_to_cart', product_id=product.PID) }}">
+                            <input type="hidden" name="next" value="{{ request.path }}">
+                            <input type="hidden" name="affiliate_user_id" value="{{ profile.UserId }}">
+                            <input type="hidden" name="affiliate_username" value="{{ profile.Username }}">
+                            <input type="hidden" name="affiliate_price" value="{{ product.PSelPrice or product.PPrice or 0 }}">
+                            <input type="hidden" name="affiliate_commission_percent" value="{{ product.Comission or 0 }}">
+                            <button type="submit">Add</button>
+                        </form>
+                    </article>
+                {% endfor %}
+                {% for item in affiliate_products %}
+                    <article class="public-product-card">
+                        <a href="{{ url_for('product_details', product_id=item.ProductId) }}">
+                            <img src="{{ item|product_image|legacy_asset }}" alt="{{ item.PName }}">
+                        </a>
+                        <h3>{{ item.PName }}</h3>
+                        <strong>Price : {{ item.AffiliatePrice or item.PSelPrice or item.PPrice or 0 }}</strong>
+                        <form method="post" action="{{ url_for('add_to_cart', product_id=item.ProductId) }}">
+                            <input type="hidden" name="next" value="{{ request.path }}">
+                            <input type="hidden" name="affiliate_user_id" value="{{ profile.UserId }}">
+                            <input type="hidden" name="affiliate_username" value="{{ profile.Username }}">
+                            <input type="hidden" name="affiliate_price" value="{{ item.AffiliatePrice or item.PSelPrice or item.PPrice or 0 }}">
+                            <input type="hidden" name="affiliate_commission_percent" value="{{ item.CommissionPercent or item.Comission or 0 }}">
+                            <button type="submit">Add</button>
+                        </form>
+                    </article>
+                {% endfor %}
+                {% if not all_products %}
+                    <div class="empty-state public-empty">
+                        <strong>No product found</strong>
+                        <span>Products will appear after this profile adds own or affiliate products.</span>
+                    </div>
+                {% endif %}
+            </div>
+        </section>
+
+        <aside class="public-service-rail">
+            <h2>Services</h2>
+            {% for offer in offers[:6] %}
+                <a class="public-service-mini" href="{{ url_for('public_service_order', offer_id=offer.id) }}">
+                    <span>No.{{ loop.index }}</span>
+                    <img src="{{ ('OfferImages/' ~ offer.image_path)|legacy_asset if offer.image_path else 'ProductImage/download.jpg'|legacy_asset }}" alt="{{ offer.offer_title }}">
+                    <h3>{{ offer.offer_title }}</h3>
+                    <p>{{ offer.OfferType }}</p>
+                </a>
+            {% else %}
+                <div class="public-service-empty">No service found</div>
+            {% endfor %}
+        </aside>
+    </section>
+
+    <footer class="public-profile-footer">
+        <div class="footer-grid">
+            <section>
+                <h3>Subscription</h3>
+                <form class="subscribe-form">
+                    <input placeholder="Place enter your email">
+                    <button type="button">Subscription</button>
+                </form>
+                <h3>Stay Connected</h3>
+                <div class="footer-social"><a>f</a><a>▶</a><a>t</a><a>p</a></div>
+            </section>
+            <section>
+                <h3>How To Buy</h3>
+                <a>Select A product</a>
+                <a>Buy Now</a>
+                <a>Order Now</a>
+                <a>Payment Option</a>
+            </section>
+            <section>
+                <h3>Customer Service</h3>
+                <a>Customer Support</a>
+                <a>About us</a>
+                <a>Contact US</a>
+            </section>
+            <section>
+                <h3>Contact Us</h3>
+                <p>57/G, Kawranbazar, Dhaka-1215</p>
+                <p>8801631-141508</p>
+                <p>info@ptisystem.com</p>
+            </section>
+        </div>
+        <div class="payment-cards">
+            <article><strong>Pay With</strong><span>Visa · Mastercard · bKash · Nagad</span></article>
+            <article><strong>Skrill</strong><span>thtkislam@gmail.com</span></article>
+            <article><strong>PayPal</strong><span>mdgilman_88@hotmail.com</span></article>
+            <article><strong>Payoneer</strong><span>ptisystem001@gmail.com</span></article>
+        </div>
+    </footer>
+</main>
+{% endblock %}

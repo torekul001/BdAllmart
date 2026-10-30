@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block body %}
+<main class="page-wrap">
+    <section class="form-card">
+        <div class="top-line">
+            <div>
+                <h1>Create account</h1>
+                <p>Select user category. Login will redirect to the matching dashboard.</p>
+            </div>
+            <a href="{{ url_for('login') }}">Back to login</a>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                <div class="message {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endwith %}
+
+        <form method="post" class="grid-form">
+            <label>Username<input name="username" class="input" autocomplete="username" required></label>
+            <label>Email<input name="email" type="email" class="input" autocomplete="email" required></label>
+            <label>Phone<input name="phone" class="input" autocomplete="tel"></label>
+            <label>User Category
+                <select name="category" class="input">
+                    {% for value, label in categories %}
+                        <option value="{{ value }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>Password<input name="password" type="password" class="input" autocomplete="new-password" required></label>
+            <label>Confirm Password<input name="confirm_password" type="password" class="input" autocomplete="new-password" required></label>
+            <label class="wide">Reference Username *<input name="reference" class="input" value="{{ reference }}" readonly aria-required="true"></label>
+            <button class="btn" type="submit">Create Account</button>
+        </form>
+    </section>
+</main>
+{% endblock %}

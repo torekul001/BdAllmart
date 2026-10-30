@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block body %}
+<header class="store-top">
+    <div class="store-header">
+        <a class="market-logo" href="{{ url_for('login') }}"><img src="{{ url_for('static', filename='bdallmartLogo.png', v='20260518-logo') }}" alt="bdallmart.com"><strong>bdallmart.com</strong></a>
+        <form class="search-box" method="get" action="{{ url_for('ask_chat') }}">
+            <input type="search" name="q" placeholder="Ask products, services, courses, jobs">
+            <button type="submit">Ask</button>
+        </form>
+        <div class="quick-actions">
+            <a href="{{ request.path }}?cart=open">Cart ({{ cart_count }})</a>
+            <a href="{{ url_for('login') }}">Home</a>
+        </div>
+    </div>
+</header>
+
+<main class="service-order-page">
+    <section class="service-order-card offer-readonly-card">
+        <div class="offer-detail-slider">
+            {% if offer_images %}
+                {% for image in offer_images[:3] %}
+                    <img src="{{ ('OfferImages/' ~ image.image_path)|legacy_asset }}" alt="{{ offer.offer_title }}">
+                {% endfor %}
+            {% else %}
+                <img src="{{ 'ProductImage/download.jpg'|legacy_asset }}" alt="{{ offer.offer_title }}">
+            {% endif %}
+        </div>
+
+        <div class="panel-heading">
+            <div>
+                <h2>Compare Packages</h2>
+                <p>Package select kore right side theke service order korun.</p>
+            </div>
+        </div>
+
+        <div class="offer-top-fields offer-readonly-fields">
+            <label>
+                Offer category
+                <span>{{ offer.OfferType or "Service" }}</span>
+            </label>
+            <label>
+                Offer title
+                <span>{{ offer.offer_title }}</span>
+            </label>
+        </div>
+
+        <div class="package-table readonly-package-table">
+            <div class="package-row package-head">
+                <span>Package</span>
+                <a class="{% if selected_package == '1' %}active{% endif %}" href="{{ url_for('public_service_order', offer_id=offer.id, package='1') }}">{{ offer.offer_type1 or "Premium" }}</a>
+                <a class="{% if selected_package == '2' %}active{% endif %}" href="{{ url_for('public_service_order', offer_id=offer.id, package='2') }}">{{ offer.offer_type2 or "Standard" }}</a>
+                <a class="{% if selected_package == '3' %}active{% endif %}" href="{{ url_for('public_service_order', offer_id=offer.id, package='3') }}">{{ offer.offer_type3 or "Basic" }}</a>
+            </div>
+            <div class="package-row">
+                <span>Amount</span>
+                <b>Tk {{ offer.offer_amount1 or 0 }}</b>
+                <b>Tk {{ offer.offer_amount2 or 0 }}</b>
+                <b>Tk {{ offer.offer_amount3 or 0 }}</b>
+            </div>
+            <div class="package-row">
+                <span>Description</span>
+                <p>{{ offer.description1 or "" }}</p>
+                <p>{{ offer.description2 or "" }}</p>
+                <p>{{ offer.description3 or "" }}</p>
+            </div>
+            {% for label, key in package_features %}
+                <div class="package-row feature-row">
+                    <span>{{ label }}</span>
+                    {% for index in [1, 2, 3] %}
+                        {% set field = key ~ index %}
+                        <em class="{% if offer[field]|string == '1' %}checked{% endif %}">{% if offer[field]|string == '1' %}✓{% else %}□{% endif %}</em>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+            <div class="package-row">
+                <span>No of Concepts</span>
+                <p>{{ offer.initial_concepts1 or "" }}</p>
+                <p>{{ offer.initial_concepts2 or "" }}</p>
+                <p>{{ offer.initial_concepts3 or "" }}</p>
+            </div>
+            <div class="package-row">
+                <span>Revisions</span>
+                <p>{{ offer.revisions1 or "" }}</p>
+                <p>{{ offer.revisions2 or "" }}</p>
+                <p>{{ offer.revisions3 or "" }}</p>
+            </div>
+            <div class="package-row">
+                <span>Delivery time</span>
+                <p>{{ offer.delivery_time1_1day or "" }}</p>
+                <p>{{ offer.delivery_time2 or "" }}</p>
+                <p>{{ offer.delivery_time3 or "" }}</p>
+            </div>
+            <div class="package-row">
+                <span>Quick Delivery</span>
+                <p>{{ offer.QuickDelivery1 or "" }}</p>
+                <p>{{ offer.QuickDelivery2 or "" }}</p>
+                <p>{{ offer.QuickDelivery3 or "" }}</p>
+            </div>
+            <div class="package-row">
+                <span>Quick Charge</span>
+                <p>{{ offer.QuickDelChare1 or "" }}</p>
+                <p>{{ offer.QuickDelChare2 or "" }}</p>
+                <p>{{ offer.QuickDelChare3 or "" }}</p>
+            </div>
+            <div class="package-row package-select-row">
+                <span>Select Offer</span>
+                <a class="{% if selected_package == '1' %}active{% endif %}" href="{{ url_for('public_service_order', offer_id=offer.id, package='1') }}">
+                    {% if selected_package == '1' %}Selected Offer{% else %}Select Offer{% endif %}
+                </a>
+                <a class="{% if selected_package == '2' %}active{% endif %}" href="{{ url_for('public_service_order', offer_id=offer.id, package='2') }}">
+                    {% if selected_package == '2' %}Selected Offer{% else %}Select Offer{% endif %}
+                </a>
+                <a class="{% if selected_package == '3' %}active{% endif %}" href="{{ url_for('public_service_order', offer_id=offer.id, package='3') }}">
+                    {% if selected_package == '3' %}Selected Offer{% else %}Select Offer{% endif %}
+                </a>
+            </div>
+        </div>
+
+        <div class="offer-bottom-fields offer-readonly-bottom">
+            <label>
+                About this offer
+                <span>{{ offer.about_this_offer1 or "" }}</span>
+            </label>
+            <label>
+                File formats / details
+                <span>{{ offer.about_this_offer2 or "" }}</span>
+            </label>
+        </div>
+    </section>
+
+    <section class="service-checkout-card">
+        <div>
+            <h2>Service Order</h2>
+            <p>Selected package amount: <strong>Tk {{ amount }}</strong></p>
+        </div>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                <div class="message {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endwith %}
+        <form method="post">
+            <input type="hidden" name="package" value="{{ selected_package }}">
+            <label>Customer name
+                <input class="input" name="customer_name" value="{{ session.get('username', '') }}" placeholder="Your name">
+            </label>
+            <label>Contact number
+                <input class="input" name="customer_phone" value="{{ session.get('phone', '') }}" placeholder="01XXXXXXXXX">
+            </label>
+            <label>Order note
+                <textarea class="input" name="note" rows="4" placeholder="Write your service requirement"></textarea>
+            </label>
+            <button class="btn" type="submit">Place Service Order</button>
+        </form>
+    </section>
+</main>
+{% endblock %}

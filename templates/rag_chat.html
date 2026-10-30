@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block body %}
+<header class="store-top">
+    <div class="store-bar">
+        <a href="{{ url_for('login') }}">Home</a>
+        <a href="{{ url_for('register') }}">Register</a>
+        <a href="{{ url_for('login') }}#login-panel">Login</a>
+    </div>
+    <div class="store-header">
+        <a class="market-logo" href="{{ url_for('login') }}"><img src="{{ url_for('static', filename='bdallmartLogo.png', v='20260518-logo') }}" alt="bdallmart.com"><strong>bdallmart.com</strong></a>
+        <form class="search-box" method="get" action="{{ url_for('ask_chat') }}">
+            <input type="search" name="q" value="{{ question }}" placeholder="Ask about products, services, courses, jobs">
+            <button type="submit">Ask</button>
+        </form>
+        <div class="quick-actions">
+            <a href="{{ url_for('cart') }}">Cart ({{ cart_count }})</a>
+            <span>Orders</span>
+            <span>Messages</span>
+        </div>
+    </div>
+    <nav class="store-nav">
+        {% for category in categories %}
+            <div class="menu-item">
+                <a href="{{ url_for('category_products', category_id=category.id) }}">{{ category.name }}</a>
+            </div>
+        {% endfor %}
+    </nav>
+</header>
+
+<main class="market-page">
+    <section class="rag-shell">
+        <div class="rag-chat-card">
+            <div class="rag-heading">
+                <span>Database RAG</span>
+                <h1>Ask bdallmart.com</h1>
+                <p>Products, services, courses and work list data theke answer paben.</p>
+            </div>
+            <form class="rag-question-form" method="get" action="{{ url_for('ask_chat') }}">
+                <input name="q" value="{{ question }}" placeholder="Example: logo design service ache?">
+                <button type="submit">Ask Question</button>
+            </form>
+            {% if answer %}
+                <div class="rag-answer">
+                    <strong>Answer</strong>
+                    <p>{{ answer }}</p>
+                    <small>
+                        {% if llm_used %}
+                            Local LLM: {{ llm_model }}
+                        {% elif llm_enabled %}
+                            Database fallback answer. Start Ollama to use local LLM.
+                        {% else %}
+                            Database fallback answer.
+                        {% endif %}
+                    </small>
+                </div>
+            {% else %}
+                <div class="rag-answer muted">
+                    <strong>Ready</strong>
+                    <p>Question likhun. Ami database theke matching product, service, course and job ber kore answer dibo.</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="rag-results">
+            <div class="section-title">
+                <div>
+                    <strong>Matched Records</strong>
+                    <span>{{ results|length }} database result</span>
+                </div>
+            </div>
+            {% for item in results %}
+                <article class="rag-result-item{% if item.image %} with-image{% endif %}">
+                    {% if item.image %}
+                        <a class="rag-result-thumb" href="{{ item.url or '#' }}" aria-label="{{ item.title }}">
+                            <img src="{{ item.image|legacy_asset }}" alt="{{ item.title }}">
+                        </a>
+                    {% endif %}
+                    <div class="rag-result-body">
+                        <span>{{ item.type }}</span>
+                        <h3>{{ item.title }}</h3>
+                        <p>{{ item.meta }}</p>
+                        <small>{{ item.text }}</small>
+                    </div>
+                    {% if item.type == "Product" and item.id %}
+                        <form class="rag-cart-form" method="post" action="{{ url_for('add_to_cart', product_id=item.id) }}">
+                            <input type="hidden" name="next" value="{{ request.full_path }}">
+                            <button type="submit">Add to Cart</button>
+                        </form>
+                    {% elif item.url %}
+                        <a class="rag-open-link" href="{{ item.url }}">Open</a>
+                    {% endif %}
+                </article>
+            {% else %}
+                <div class="empty-state">
+                    <strong>No result yet</strong>
+                    <span>Search box e product, service, course ba job niye question korun.</span>
+                </div>
+            {% endfor %}
+        </div>
+    </section>
+</main>
+{% endblock %}

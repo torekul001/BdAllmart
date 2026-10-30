@@ -1,0 +1,16 @@
+<div class="sidebar-menu-group workspace-shortcuts">
+    <h3>New Features</h3>
+    <a href="{{ url_for('market.home') }}">Workspace Overview</a>
+    <a href="{{ url_for('market.catalog') }}">Products, Software &amp; Services</a>
+    <a href="{{ url_for('market.listings') }}">My Store &amp; Affiliate Sales</a>
+    <a href="{{ url_for('market.jobs') }}">Jobs, Bids &amp; Contests</a>
+    <a href="{{ url_for('market.orders') }}">Orders &amp; Contracts</a>
+    <a href="{{ url_for('market.learning') }}">My Learning</a>
+    <a href="{{ url_for('market.teaching') }}">Course Management</a>
+    <a href="{{ url_for('market.earnings') }}">Earnings &amp; Withdrawals</a>
+    <a href="{{ url_for('market.settings') }}">Profile &amp; Features</a>
+    {% if session.get('category', '')|lower == 'admin' %}
+        <a href="{{ url_for('market.admin') }}">Platform Management</a>
+        <a href="{{ url_for('market.admin_users') }}">Users &amp; Permissions</a>
+    {% endif %}
+</div>

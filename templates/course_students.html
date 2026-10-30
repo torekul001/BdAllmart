@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+{% block body %}
+<main class="dashboard">
+    <aside class="sidebar">
+        <a class="brand" href="{{ url_for('dashboard') }}"><img src="{{ url_for('static', filename='bdallmartLogo.png', v='20260518-logo') }}" alt="bdallmart.com"> bdallmart.com</a>
+        <div class="sidebar-user">
+            <strong>{{ session.get("username") }}</strong>
+            <span>{{ session.get("category") }}</span>
+        </div>
+        <nav>
+            {% for label, href in menu %}
+                <a class="{% if request.path == href %}active{% endif %}" href="{{ href }}">{{ label }}</a>
+            {% endfor %}
+            {% include '_workspace_menu.html' %}
+        </nav>
+        <a class="sidebar-logout" href="{{ url_for('logout') }}">Logout</a>
+    </aside>
+
+    <section class="content">
+        <header class="dashboard-topbar">
+            <div>
+                <span>Enrollment</span>
+                <h1>Enroll Student</h1>
+                <p>Add a student to a course, then assign YouTube lessons from the assignment page.</p>
+            </div>
+            <div class="dashboard-top-actions">
+                <a class="workspace-entry" href="{{ url_for('market.home') }}">New Features ↗</a>
+                <a href="{{ url_for('course_manage') }}">Add Video</a>
+                <a href="{{ url_for('course_assign') }}">Assign Videos</a>
+            </div>
+        </header>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-stack">
+                    {% for category, message in messages %}
+                        <div class="message {{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <section class="course-layout">
+            <form class="course-form panel-card" method="post">
+                <h2>Student Information</h2>
+                <label>
+                    Student name
+                    <input name="name" required placeholder="Full name">
+                </label>
+                <label>
+                    Mobile
+                    <input name="mobile" required placeholder="01XXXXXXXXX">
+                </label>
+                <label>
+                    Email
+                    <input name="email" type="email" placeholder="student@example.com">
+                </label>
+                <label>
+                    Address
+                    <input name="address" placeholder="Present address">
+                </label>
+                <label>
+                    Course Category
+                    <select name="course" required>
+                        <option value="">Select course category</option>
+                        {% for category in categories %}
+                            <option value="{{ category }}">{{ category }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label>
+                    Course fee
+                    <input name="fee" type="number" min="0" value="0">
+                </label>
+                <label>
+                    Reference
+                    <input type="hidden" name="reference" id="referenceValue" required>
+                    <div class="searchable-select" data-searchable-select>
+                        <button type="button" class="searchable-select-trigger" id="referenceTrigger">
+                            Select reference user
+                        </button>
+                        <div class="searchable-select-panel">
+                            <input type="search" class="searchable-select-search" placeholder="Search reference user">
+                            <div class="searchable-select-options">
+                                {% for user in reference_users %}
+                                    <button type="button" class="searchable-select-option" value="{{ user.Username }}" data-search="{{ user.Username }} {{ user.FirstName }} {{ user.Phone }} {{ user.Email }} {{ user.UserCatagory }}">
+                                        {{ user.Username }}{% if user.FirstName %} - {{ user.FirstName }}{% endif %}{% if user.Phone %} - {{ user.Phone }}{% endif %}{% if user.UserCatagory %} ({{ user.UserCatagory }}){% endif %}
+                                    </button>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    <select class="sr-only-reference" tabindex="-1" aria-hidden="true">
+                        <option value="">Select reference user</option>
+                        {% for user in reference_users %}
+                            <option value="{{ user.Username }}" data-search="{{ user.Username }} {{ user.FirstName }} {{ user.Phone }} {{ user.Email }} {{ user.UserCatagory }}">
+                                {{ user.Username }}{% if user.FirstName %} - {{ user.FirstName }}{% endif %}{% if user.Phone %} - {{ user.Phone }}{% endif %}{% if user.UserCatagory %} ({{ user.UserCatagory }}){% endif %}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <button type="submit">Enroll Student</button>
+            </form>
+
+            <section class="panel-card">
+                <div class="course-list-heading">
+                    <div>
+                        <h2>Enrolled Students</h2>
+                        <p>{{ students|length }} students found</p>
+                    </div>
+                </div>
+                <div class="admin-table-wrap">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Student ID</th>
+                                <th>Name</th>
+                                <th>Mobile</th>
+                                <th>Course Category</th>
+                                <th>Assign</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for student in students %}
+                                <tr>
+                                    <td>{{ student.StdId }}</td>
+                                    <td>{{ student.Name }}</td>
+                                    <td>{{ student.MobileNo }}</td>
+                                    <td>{{ student.Course }}</td>
+                                    <td><a href="{{ url_for('course_assign', student=student.StdId, category=student.Course) }}">Assign Video</a></td>
+                                </tr>
+                            {% else %}
+                                <tr>
+                                    <td colspan="5">No students enrolled yet.</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </section>
+    </section>
+</main>
+<script>
+    const referenceSelect = document.querySelector("[data-searchable-select]");
+    if (referenceSelect) {
+        const trigger = referenceSelect.querySelector(".searchable-select-trigger");
+        const search = referenceSelect.querySelector(".searchable-select-search");
+        const options = Array.from(referenceSelect.querySelectorAll(".searchable-select-option"));
+        const hidden = document.getElementById("referenceValue");
+
+        trigger.addEventListener("click", () => {
+            referenceSelect.classList.toggle("open");
+            if (referenceSelect.classList.contains("open")) {
+                search.value = "";
+                options.forEach((option) => option.hidden = false);
+                search.focus();
+            }
+        });
+
+        search.addEventListener("input", () => {
+            const keyword = search.value.trim().toLowerCase();
+            options.forEach((option) => {
+                option.hidden = keyword && !option.dataset.search.toLowerCase().includes(keyword);
+            });
+        });
+
+        options.forEach((option) => {
+            option.addEventListener("click", () => {
+                hidden.value = option.value;
+                trigger.textContent = option.textContent.trim();
+                referenceSelect.classList.remove("open");
+            });
+        });
+
+        document.addEventListener("click", (event) => {
+            if (!referenceSelect.contains(event.target)) {
+                referenceSelect.classList.remove("open");
+            }
+        });
+    }
+</script>
+{% endblock %}
